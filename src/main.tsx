@@ -57,7 +57,7 @@ const savedTheme = (() => {
 if (savedTheme === 'system') {
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
   document.documentElement.dataset.theme = prefersDark ? 'dark' : 'light'
-} else if (savedTheme && savedTheme !== 'dark') {
+} else if (savedTheme) {
   document.documentElement.dataset.theme = savedTheme
 }
 
