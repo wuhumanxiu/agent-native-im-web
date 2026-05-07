@@ -10,6 +10,7 @@ import { FriendsPage } from '@/pages/FriendsPage'
 import { InboxPage } from '@/pages/InboxPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { PublicBotPage } from '@/pages/PublicBotPage'
+import { OnePassCallbackPage } from '@/pages/OnePassCallbackPage'
 import * as api from '@/lib/api'
 import { getCachedUser } from '@/lib/cache'
 import { getCookieSessionToken, getOfflineCachedToken } from '@/lib/session-token'
@@ -102,6 +103,7 @@ export default function App() {
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<LoginPage />} />
+        <Route path="/auth/callback/1pass" element={<OnePassCallbackPage />} />
         <Route path="/public/bots/:identifier" element={<PublicBotPage />} />
 
         {/* Join invite (requires auth) */}

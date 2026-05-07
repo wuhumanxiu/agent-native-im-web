@@ -281,6 +281,12 @@ export interface LoginResponse {
   token: string
 }
 
+export interface OnePassConfig {
+  enabled: boolean
+  site_id?: string
+  start_url?: string
+}
+
 export interface MessagesResponse {
   messages: Message[]
   has_more: boolean

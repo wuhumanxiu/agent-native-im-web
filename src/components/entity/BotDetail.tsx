@@ -427,17 +427,7 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
             <div className="flex gap-2">
               <button
                 onClick={() => {
-                  const integrationInfo = `# Bot Integration Configuration
-API Endpoint: ${gatewayUrl}/api/v1
-API Key: ${createdCredentials.key}
-
-# Environment Variables (.env)
-AGENT_IM_BASE=${gatewayUrl}/api/v1
-AGENT_IM_TOKEN=${createdCredentials.key}
-
-# Integration Documentation
-${createdCredentials.doc}`
-                  handleCopy(integrationInfo, 'integration')
+                  handleCopy(accessText || createdCredentials.doc, 'integration')
                 }}
                 className="flex-1 py-2 rounded-lg bg-[var(--color-warning)]/12 hover:bg-[var(--color-warning)]/18 text-[var(--color-warning)] text-xs font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors"
               >

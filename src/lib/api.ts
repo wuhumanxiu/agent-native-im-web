@@ -2,7 +2,7 @@ import type {
   APIResponse, LoginResponse, Entity, Conversation,
   MessagesResponse, SearchResponse, GlobalSearchResponse, Message,
   Task, ConversationMemory, ChangeRequest, EntitySelfCheck, EntityDiagnostics, FriendRequest, BotAccessLink, PublicBotProfile,
-  NotificationRecord, InboxSnapshot,
+  NotificationRecord, InboxSnapshot, OnePassConfig,
 } from './types'
 import { getSessionHooks } from './auth-session'
 import { reportApiError } from './errors'
@@ -153,6 +153,12 @@ async function tryRefreshToken(oldToken: string): Promise<string | null> {
 // Auth
 export const login = (username: string, password: string) =>
   request<LoginResponse>('POST', '/api/v1/auth/login', undefined, { username, password })
+
+export const getOnePassConfig = () =>
+  requestQuiet<OnePassConfig>('GET', '/api/v1/auth/1pass/config')
+
+export const loginWithOnePass = (ticket: string, state2?: string | null) =>
+  request<LoginResponse>('POST', '/api/v1/auth/1pass/login', undefined, { ticket, state2 })
 
 export const register = (username: string, password: string, email?: string, displayName?: string) =>
   request<{ token: string; entity: Entity }>('POST', '/api/v1/auth/register', undefined, { username, password, email, display_name: displayName })

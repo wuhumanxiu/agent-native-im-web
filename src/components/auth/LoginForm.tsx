@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LogIn, Loader2 } from 'lucide-react'
+import { LogIn, Loader2, ScanLine } from 'lucide-react'
 import { applyGatewayUrl, clearGatewayUrl, getDefaultGatewayUrl, getGatewayUrl, persistGatewayUrl } from '@/lib/gateway'
 
 interface Props {
@@ -8,12 +8,13 @@ interface Props {
   onLogin: (username: string, password: string) => Promise<void>
   error?: string
   offlineHint?: string
+  onWechatLogin?: () => Promise<void>
   onForgotPassword?: () => void
   onTerms?: () => void
   onPrivacy?: () => void
 }
 
-export function LoginForm({ onLogin, error, offlineHint, onSwitchToRegister, onForgotPassword, onTerms, onPrivacy }: Props) {
+export function LoginForm({ onLogin, error, offlineHint, onWechatLogin, onSwitchToRegister, onForgotPassword, onTerms, onPrivacy }: Props) {
   const { t } = useTranslation()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -21,6 +22,7 @@ export function LoginForm({ onLogin, error, offlineHint, onSwitchToRegister, onF
   const [showGateway, setShowGateway] = useState(getGatewayUrl() !== getDefaultGatewayUrl())
   const [gateway, setGateway] = useState(getGatewayUrl())
   const [gatewayError, setGatewayError] = useState('')
+  const [wechatLoading, setWechatLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,6 +43,16 @@ export function LoginForm({ onLogin, error, offlineHint, onSwitchToRegister, onF
       await onLogin(username, password)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleWechatLogin = async () => {
+    if (!onWechatLogin) return
+    setWechatLoading(true)
+    try {
+      await onWechatLogin()
+    } finally {
+      setWechatLoading(false)
     }
   }
 
@@ -157,6 +169,25 @@ export function LoginForm({ onLogin, error, offlineHint, onSwitchToRegister, onF
               </>
             )}
           </button>
+
+          {onWechatLogin && (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-[var(--color-border)]" />
+                <span className="text-[11px] text-[var(--color-text-muted)]">{t('auth.or')}</span>
+                <div className="h-px flex-1 bg-[var(--color-border)]" />
+              </div>
+              <button
+                type="button"
+                onClick={handleWechatLogin}
+                disabled={wechatLoading}
+                className="w-full h-11 rounded-lg bg-[#07c160] hover:bg-[#06ad56] disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              >
+                {wechatLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanLine className="w-4 h-4" />}
+                {t('auth.wechatLogin')}
+              </button>
+            </>
+          )}
         </form>
 
         <div className="mt-6 space-y-3">

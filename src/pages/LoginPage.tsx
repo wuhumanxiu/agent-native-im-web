@@ -55,6 +55,27 @@ export function LoginPage() {
     }
   }
 
+  const handleWechatLogin = async () => {
+    setLoginError('')
+    try {
+      const res = await api.getOnePassConfig()
+      if (!res.ok || !res.data?.enabled || !res.data.site_id || !res.data.start_url) {
+        setLoginError(t('auth.wechatUnavailable'))
+        return
+      }
+      const stateBytes = new Uint8Array(16)
+      crypto.getRandomValues(stateBytes)
+      const state2 = Array.from(stateBytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+      sessionStorage.setItem('aim_1pass_state2', state2)
+      const target = new URL(res.data.start_url)
+      target.searchParams.set('site_id', res.data.site_id)
+      target.searchParams.set('state2', state2)
+      window.location.href = target.toString()
+    } catch {
+      setLoginError(t('auth.networkError'))
+    }
+  }
+
   const handleRegister = (regToken: string, regEntity: Entity) => {
     setAuth(regToken, regEntity)
     navigate('/chat', { replace: true })
@@ -73,6 +94,7 @@ export function LoginPage() {
         onLogin={handleLogin}
         error={loginError}
         offlineHint={isOffline ? t('auth.offlineFirstLoginHint') : undefined}
+        onWechatLogin={handleWechatLogin}
         onSwitchToRegister={() => setAuthPage('register')}
         onForgotPassword={() => setAuthPage('forgot')}
         onTerms={() => setAuthPage('terms')}
