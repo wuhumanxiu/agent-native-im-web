@@ -9,7 +9,7 @@ import { getErrorMessage } from '@/lib/errors'
 export function OnePassCallbackPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { setAuth } = useAuthStore()
+  const { setAuth, token } = useAuthStore()
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -20,7 +20,9 @@ export function OnePassCallbackPage() {
       const ticket = params.get('ticket')
       const state2 = params.get('state2')
       const savedState2 = sessionStorage.getItem('aim_1pass_state2')
+      const mode = sessionStorage.getItem('aim_1pass_mode')
       sessionStorage.removeItem('aim_1pass_state2')
+      sessionStorage.removeItem('aim_1pass_mode')
 
       if (!ticket) {
         setError(t('auth.wechatMissingTicket'))
@@ -32,6 +34,21 @@ export function OnePassCallbackPage() {
       }
 
       try {
+        if (mode === 'link') {
+          if (!token) {
+            setError(t('auth.wechatLinkLoginRequired'))
+            return
+          }
+          const linkRes = await api.linkOnePass(token, ticket, state2)
+          if (cancelled) return
+          if (linkRes.ok) {
+            navigate('/settings', { replace: true })
+            return
+          }
+          setError(getErrorMessage(linkRes) || t('auth.wechatLinkError'))
+          return
+        }
+
         const res = await api.loginWithOnePass(ticket, state2)
         if (cancelled) return
         if (res.ok && res.data) {
@@ -49,7 +66,7 @@ export function OnePassCallbackPage() {
     return () => {
       cancelled = true
     }
-  }, [navigate, setAuth, t])
+  }, [navigate, setAuth, t, token])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-primary)] px-4">

@@ -8,10 +8,13 @@ import { buildInfo } from '@/lib/build-info'
 import { parseConnectedDeviceInfo } from '@/lib/device-info'
 import { usePwaInstall } from '@/hooks/usePwaInstall'
 import * as api from '@/lib/api'
+import { getErrorMessage } from '@/lib/errors'
+import type { AuthMethods } from '@/lib/types'
 import { getPushSubscription, isPushSupported, registerPushNotifications } from '@/lib/push'
 import {
   User, Lock, Palette, Globe, ChevronLeft, ChevronRight, Bell,
   Check, Loader2, Eye, EyeOff, Smartphone, LogOut, Info, Copy, Download, ArrowLeft, RefreshCw,
+  Link2, Unlink,
 } from 'lucide-react'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
@@ -41,10 +44,14 @@ export function UserSettingsPage({ onBack }: Props) {
   const [oldPass, setOldPass] = useState('')
   const [newPass, setNewPass] = useState('')
   const [confirmPass, setConfirmPass] = useState('')
+  const [loginUsername, setLoginUsername] = useState(entity?.name || '')
   const [showOld, setShowOld] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [passError, setPassError] = useState('')
   const [passSuccess, setPassSuccess] = useState('')
+  const [authMethods, setAuthMethods] = useState<AuthMethods | null>(null)
+  const [authMethodsLoading, setAuthMethodsLoading] = useState(false)
+  const [linkingOnePass, setLinkingOnePass] = useState(false)
   const [aboutCopied, setAboutCopied] = useState(false)
   const [copiedProfileField, setCopiedProfileField] = useState<'public' | null>(null)
   const [pushEnabled, setPushEnabled] = useState(false)
@@ -81,6 +88,29 @@ export function UserSettingsPage({ onBack }: Props) {
     }
   }, [t])
 
+  const loadAuthMethods = useCallback(async () => {
+    setAuthMethodsLoading(true)
+    const res = await api.getAuthMethods(token)
+    if (res.ok && res.data) {
+      setAuthMethods(res.data)
+    }
+    setAuthMethodsLoading(false)
+  }, [token])
+
+  useEffect(() => {
+    if (section === 'security') {
+      void loadAuthMethods()
+    }
+  }, [section, loadAuthMethods])
+
+  useEffect(() => {
+    if (authMethods?.password_can_set && entity?.name?.startsWith('1pass_')) {
+      setLoginUsername('')
+    } else if (entity?.name) {
+      setLoginUsername(entity.name)
+    }
+  }, [authMethods?.password_can_set, entity?.name])
+
 
   const handleSaveProfile = async () => {
     if (!editName.trim() || !entity) return
@@ -107,6 +137,10 @@ export function UserSettingsPage({ onBack }: Props) {
   const handleChangePassword = async () => {
     setPassError('')
     setPassSuccess('')
+    if (authMethods?.password_can_set && !loginUsername.trim()) {
+      setPassError(t('settings.usernameRequired'))
+      return
+    }
     if (newPass.length < 8) {
       setPassError(t('settings.passwordTooShort'))
       return
@@ -116,15 +150,57 @@ export function UserSettingsPage({ onBack }: Props) {
       return
     }
     setSaving(true)
-    const res = await api.changePassword(token, oldPass, newPass)
+    const res = await api.changePassword(token, oldPass, newPass, authMethods?.password_can_set ? {
+      username: loginUsername.trim(),
+      email: editEmail.trim(),
+    } : undefined)
     setSaving(false)
     if (res.ok) {
-      setPassSuccess(t('settings.passwordChanged'))
+      const data = res.data as { entity?: typeof entity } | undefined
+      if (data?.entity) setAuth(token, data.entity)
+      setPassSuccess(authMethods?.password_can_set ? t('settings.passwordSet') : t('settings.passwordChanged'))
       setOldPass('')
       setNewPass('')
       setConfirmPass('')
+      void loadAuthMethods()
     } else {
       setPassError(typeof res.error === 'string' ? res.error : res.error?.message || t('settings.passwordError'))
+    }
+  }
+
+  const startOnePassLink = async () => {
+    setPassError('')
+    setLinkingOnePass(true)
+    try {
+      const res = await api.getOnePassConfig()
+      if (!res.ok || !res.data?.enabled || !res.data.site_id || !res.data.start_url) {
+        setPassError(t('settings.onePassUnavailable'))
+        return
+      }
+      const stateBytes = new Uint8Array(16)
+      crypto.getRandomValues(stateBytes)
+      const state2 = Array.from(stateBytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+      sessionStorage.setItem('aim_1pass_state2', state2)
+      sessionStorage.setItem('aim_1pass_mode', 'link')
+      const target = new URL(res.data.start_url)
+      target.searchParams.set('site_id', res.data.site_id)
+      target.searchParams.set('state2', state2)
+      window.location.href = target.toString()
+    } catch {
+      setPassError(t('settings.onePassUnavailable'))
+    } finally {
+      setLinkingOnePass(false)
+    }
+  }
+
+  const unlinkExternalIdentity = async (identityID: number) => {
+    setPassError('')
+    const res = await api.unlinkExternalIdentity(token, identityID)
+    if (res.ok) {
+      setPassSuccess(t('settings.externalIdentityUnlinked'))
+      void loadAuthMethods()
+    } else {
+      setPassError(getErrorMessage(res) || t('settings.externalIdentityUnlinkError'))
     }
   }
 
@@ -332,10 +408,71 @@ export function UserSettingsPage({ onBack }: Props) {
         return (
           <div className="space-y-6">
             {!isMobile && <h3 className="text-base font-semibold text-[var(--color-text-primary)]">{t('settings.security')}</h3>}
-            <p className="text-xs text-[var(--color-text-muted)]">{t('settings.changePasswordDesc')}</p>
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-[var(--color-text-primary)]">{t('settings.loginMethods')}</p>
+                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">{t('settings.loginMethodsDesc')}</p>
+                </div>
+                {authMethodsLoading ? <Loader2 className="w-4 h-4 animate-spin text-[var(--color-text-muted)]" /> : null}
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between rounded-lg bg-[var(--color-bg-input)] px-3 py-2">
+                  <span className="text-xs text-[var(--color-text-secondary)]">{t('settings.passwordLogin')}</span>
+                  <span className={cn('text-xs font-medium', authMethods?.has_password ? 'text-[var(--color-success)]' : 'text-[var(--color-text-muted)]')}>
+                    {authMethods?.has_password ? t('settings.enabled') : t('settings.notSet')}
+                  </span>
+                </div>
+                {(authMethods?.external_identities || []).map((identity) => (
+                  <div key={identity.id} className="flex items-center gap-3 rounded-lg bg-[var(--color-bg-input)] px-3 py-2">
+                    <Link2 className="h-3.5 w-3.5 text-[var(--color-accent)]" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-[var(--color-text-primary)]">
+                        {identity.provider === '1pass' ? '1Pass' : identity.provider}
+                        {identity.upstream_provider ? ` / ${identity.upstream_provider}` : ''}
+                      </p>
+                      <p className="truncate text-[11px] text-[var(--color-text-muted)]">{identity.display_name || t('settings.externalIdentity')}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void unlinkExternalIdentity(identity.id)}
+                      className="inline-flex h-7 items-center gap-1 rounded-lg px-2 text-[11px] text-[var(--color-error)] hover:bg-[var(--color-error)]/10"
+                    >
+                      <Unlink className="h-3 w-3" />
+                      {t('settings.unlink')}
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => void startOnePassLink()}
+                  disabled={linkingOnePass}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] disabled:opacity-50"
+                >
+                  {linkingOnePass ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                  {t('settings.bindOnePass')}
+                </button>
+              </div>
+            </div>
+
+            <p className="text-xs text-[var(--color-text-muted)]">
+              {authMethods?.password_can_set ? t('settings.setPasswordDesc') : t('settings.changePasswordDesc')}
+            </p>
 
             <div className="space-y-3">
-              <div className="space-y-1.5">
+              {authMethods?.password_can_set ? (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-[var(--color-text-secondary)]">{t('settings.loginUsername')}</label>
+                  <input
+                    value={loginUsername}
+                    onChange={(e) => setLoginUsername(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl bg-[var(--color-bg-input)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]/50"
+                  />
+                </div>
+              ) : null}
+
+              {!authMethods?.password_can_set ? (
+                <div className="space-y-1.5">
                 <label className="text-xs font-medium text-[var(--color-text-secondary)]">{t('settings.currentPassword')}</label>
                 <div className="relative">
                   <input
@@ -348,7 +485,8 @@ export function UserSettingsPage({ onBack }: Props) {
                     {showOld ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-              </div>
+                </div>
+              ) : null}
 
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-[var(--color-text-secondary)]">{t('settings.newPassword')}</label>
@@ -382,11 +520,11 @@ export function UserSettingsPage({ onBack }: Props) {
 
             <button
               onClick={handleChangePassword}
-              disabled={saving || !oldPass || !newPass || !confirmPass}
+              disabled={saving || (!authMethods?.password_can_set && !oldPass) || !newPass || !confirmPass}
               className="w-full h-10 rounded-xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] disabled:opacity-40 text-white text-sm font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
             >
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
-              {t('settings.changePassword')}
+              {authMethods?.password_can_set ? t('settings.setPassword') : t('settings.changePassword')}
             </button>
           </div>
         )

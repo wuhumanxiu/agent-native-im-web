@@ -287,6 +287,23 @@ export interface OnePassConfig {
   start_url?: string
 }
 
+export interface ExternalIdentity {
+  id: number
+  entity_id: number
+  provider: string
+  upstream_provider: string
+  display_name?: string
+  avatar_url?: string
+  linked_at: string
+  last_used_at: string
+}
+
+export interface AuthMethods {
+  has_password: boolean
+  password_can_set: boolean
+  external_identities: ExternalIdentity[]
+}
+
 export interface MessagesResponse {
   messages: Message[]
   has_more: boolean

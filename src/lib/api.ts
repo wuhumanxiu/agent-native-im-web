@@ -2,7 +2,7 @@ import type {
   APIResponse, LoginResponse, Entity, Conversation,
   MessagesResponse, SearchResponse, GlobalSearchResponse, Message,
   Task, ConversationMemory, ChangeRequest, EntitySelfCheck, EntityDiagnostics, FriendRequest, BotAccessLink, PublicBotProfile,
-  NotificationRecord, InboxSnapshot, OnePassConfig,
+  NotificationRecord, InboxSnapshot, OnePassConfig, AuthMethods, ExternalIdentity,
 } from './types'
 import { getSessionHooks } from './auth-session'
 import { reportApiError } from './errors'
@@ -160,11 +160,17 @@ export const getOnePassConfig = () =>
 export const loginWithOnePass = (ticket: string, state2?: string | null) =>
   request<LoginResponse>('POST', '/api/v1/auth/1pass/login', undefined, { ticket, state2 })
 
+export const linkOnePass = (token: string, ticket: string, state2?: string | null) =>
+  request<ExternalIdentity>('POST', '/api/v1/me/external-identities/1pass/link', token, { ticket, state2 })
+
 export const register = (username: string, password: string, email?: string, displayName?: string) =>
   request<{ token: string; entity: Entity }>('POST', '/api/v1/auth/register', undefined, { username, password, email, display_name: displayName })
 
 export const getMe = (token: string) =>
   request<Entity>('GET', '/api/v1/me', token)
+
+export const getAuthMethods = (token: string) =>
+  request<AuthMethods>('GET', '/api/v1/me/auth-methods', token)
 
 export const refreshToken = (token: string) =>
   request<{ token: string }>('POST', '/api/v1/auth/refresh', token)
@@ -486,9 +492,17 @@ export const approveChangeRequest = (token: string, convId: number, reqId: numbe
 export const rejectChangeRequest = (token: string, convId: number, reqId: number) =>
   request('POST', `/api/v1/conversations/${convId}/change-requests/${reqId}/reject`, token)
 
-// Change password
-export const changePassword = (token: string, oldPassword: string, newPassword: string) =>
-  request('PUT', '/api/v1/me/password', token, { old_password: oldPassword, new_password: newPassword })
+// Change password or set the first password for external-login-only users.
+export const changePassword = (token: string, oldPassword: string, newPassword: string, options?: { username?: string; email?: string }) =>
+  request('PUT', '/api/v1/me/password', token, {
+    old_password: oldPassword,
+    new_password: newPassword,
+    username: options?.username,
+    email: options?.email,
+  })
+
+export const unlinkExternalIdentity = (token: string, identityId: number) =>
+  request('DELETE', `/api/v1/me/external-identities/${identityId}`, token)
 
 // Devices
 export const listDevices = (token: string) =>
