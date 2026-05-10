@@ -52,7 +52,7 @@ export function OnboardingPage() {
   }
 
   return (
-    <main className="min-h-screen overflow-y-auto bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
+    <main className="h-full overflow-y-auto overscroll-contain bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
       <section className="relative isolate min-h-screen overflow-hidden px-4 py-5 sm:px-8 lg:px-12">
         <div className="pointer-events-none absolute left-[-12%] top-[-16%] h-96 w-96 rounded-full bg-[var(--color-accent)]/15 blur-3xl" />
         <div className="pointer-events-none absolute bottom-[-18%] right-[-12%] h-[32rem] w-[32rem] rounded-full bg-[var(--color-bot)]/12 blur-3xl" />
