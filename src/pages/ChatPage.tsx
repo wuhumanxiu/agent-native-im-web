@@ -11,7 +11,6 @@ import { NewConversationDialog } from '@/components/conversation/NewConversation
 import { NewConversationSheet } from '@/components/conversation/NewConversationSheet'
 import { GlobalSearch } from '@/components/conversation/GlobalSearch'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
-import { OnboardingCard } from '@/components/ui/OnboardingCard'
 import { cn } from '@/lib/utils'
 import { needsFirstBot } from '@/lib/first-login'
 import { conversationRouteFor } from '@/lib/direct-conversation'
@@ -232,16 +231,6 @@ export function ChatPage() {
               <p className="text-sm text-[var(--color-text-muted)] mb-8">
                 {conversations.length === 0 ? t('auth.tagline') : ''}
               </p>
-              {conversations.length === 0 && (
-                <div className="w-full max-w-xl px-6 mb-8">
-                  <OnboardingCard
-                    onNewChat={shouldCreateFirstBot ? undefined : () => { setNewChatEntityId(undefined); setShowNewChat(true) }}
-                    onManageBots={() => navigate('/bots')}
-                    primaryLabel={shouldCreateFirstBot ? t('onboarding.createBotAction') : undefined}
-                    secondaryLabel={shouldCreateFirstBot ? t('onboarding.reviewBotsAction') : undefined}
-                  />
-                </div>
-              )}
               <div className="flex flex-col gap-2 w-56">
                 {!shouldCreateFirstBot ? (
                   <button
