@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { buildInfo } from '@/lib/build-info'
 import { parseConnectedDeviceInfo } from '@/lib/device-info'
 import { usePwaInstall } from '@/hooks/usePwaInstall'
+import { FeedbackSettingsSection } from '@/components/settings/FeedbackSettingsSection'
 import * as api from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
 import type { AuthMethods } from '@/lib/types'
@@ -14,11 +15,11 @@ import { getPushSubscription, isPushSupported, registerPushNotifications } from 
 import {
   User, Lock, Palette, Globe, ChevronLeft, ChevronRight, Bell,
   Check, Loader2, Eye, EyeOff, Smartphone, LogOut, Info, Copy, Download, ArrowLeft, RefreshCw,
-  Link2, Unlink,
+  Link2, Unlink, MessageSquarePlus,
 } from 'lucide-react'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
-type Section = 'profile' | 'security' | 'devices' | 'theme' | 'language' | 'about'
+type Section = 'profile' | 'security' | 'devices' | 'theme' | 'language' | 'feedback' | 'about'
 
 interface Props {
   onBack: () => void
@@ -301,6 +302,7 @@ export function UserSettingsPage({ onBack }: Props) {
     { id: 'devices', icon: Smartphone, label: t('settings.devices') },
     { id: 'theme', icon: Palette, label: t('settings.theme') },
     { id: 'language', icon: Globe, label: t('settings.language') },
+    { id: 'feedback', icon: MessageSquarePlus, label: t('settings.feedback') },
     { id: 'about', icon: Info, label: t('settings.about') },
   ]
 
@@ -764,6 +766,9 @@ export function UserSettingsPage({ onBack }: Props) {
           </div>
         )
 
+      case 'feedback':
+        return <FeedbackSettingsSection token={token} isMobile={isMobile} />
+
       case 'about':
         return (
           <div className="space-y-6">
@@ -1024,6 +1029,19 @@ export function UserSettingsPage({ onBack }: Props) {
             </div>
           </div>
 
+          {/* Support section */}
+          <p className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider px-1 mb-1.5">{t('settings.support')}</p>
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-hidden mb-6">
+            <button
+              onClick={() => setSection('feedback')}
+              className="w-full flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[var(--color-bg-hover)] transition-colors text-left"
+            >
+              <MessageSquarePlus className="w-4 h-4 text-[var(--color-accent)]" />
+              <span className="flex-1 text-sm text-[var(--color-text-primary)]">{t('settings.feedback')}</span>
+              <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)]" />
+            </button>
+          </div>
+
           {/* About section */}
           <p className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider px-1 mb-1.5">{t('settings.about')}</p>
           <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-hidden mb-6">
@@ -1098,7 +1116,7 @@ export function UserSettingsPage({ onBack }: Props) {
 
       {/* Right content */}
       <div className="flex-1 overflow-y-auto bg-[var(--color-bg-primary)]">
-        <div className={cn('mx-auto py-8 px-6', section === 'theme' ? 'max-w-3xl' : 'max-w-lg')}>
+        <div className={cn('mx-auto py-8 px-6', section === 'theme' ? 'max-w-3xl' : section === 'feedback' ? 'max-w-5xl' : 'max-w-lg')}>
           {section && renderSectionContent(section)}
         </div>
       </div>

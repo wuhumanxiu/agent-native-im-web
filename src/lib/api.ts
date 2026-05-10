@@ -3,6 +3,7 @@ import type {
   MessagesResponse, SearchResponse, GlobalSearchResponse, Message,
   Task, ConversationMemory, ChangeRequest, EntitySelfCheck, EntityDiagnostics, FriendRequest, BotAccessLink, PublicBotProfile,
   NotificationRecord, InboxSnapshot, OnePassConfig, AuthMethods, ExternalIdentity,
+  Attachment, FeedbackDetailResponse, FeedbackItem, FeedbackListResponse, FeedbackLevel, FeedbackStatus, FeedbackType,
 } from './types'
 import { getSessionHooks } from './auth-session'
 import { reportApiError } from './errors'
@@ -372,7 +373,7 @@ export const updateProfile = (token: string, data: { display_name?: string; avat
   request<Entity>('PUT', '/api/v1/me', token, data)
 
 // Files
-export async function uploadFile(token: string, file: File, conversationId?: number): Promise<APIResponse<{ url: string }>> {
+export async function uploadFile(token: string, file: File, conversationId?: number): Promise<APIResponse<{ url: string; filename?: string; mime_type?: string; size?: number }>> {
   const form = new FormData()
   form.append('file', file)
   if (conversationId != null) {
@@ -394,8 +395,47 @@ export async function uploadFile(token: string, file: File, conversationId?: num
       res = await doUpload(nextToken)
     }
   }
-  return parseAPIResponse<{ url: string }>(res)
+  return parseAPIResponse<{ url: string; filename?: string; mime_type?: string; size?: number }>(res)
 }
+
+// Feedback
+export const listFeedback = (
+  token: string,
+  options?: { status?: FeedbackStatus | ''; type?: FeedbackType | ''; q?: string; limit?: number; offset?: number },
+) => {
+  const params = new URLSearchParams()
+  if (options?.status) params.set('status', options.status)
+  if (options?.type) params.set('type', options.type)
+  if (options?.q) params.set('q', options.q)
+  if (options?.limit) params.set('limit', String(options.limit))
+  if (options?.offset) params.set('offset', String(options.offset))
+  const qs = params.toString()
+  return request<FeedbackListResponse>('GET', `/api/v1/feedback${qs ? `?${qs}` : ''}`, token)
+}
+
+export const createFeedback = (token: string, data: {
+  type?: FeedbackType
+  severity?: FeedbackLevel
+  title: string
+  description: string
+  contact?: string
+  attachments?: Attachment[]
+}) =>
+  request<FeedbackItem>('POST', '/api/v1/feedback', token, data)
+
+export const getFeedback = (token: string, id: number) =>
+  request<FeedbackDetailResponse>('GET', `/api/v1/feedback/${id}`, token)
+
+export const createFeedbackComment = (token: string, id: number, data: { body: string; visibility?: 'public' | 'internal'; attachments?: Attachment[] }) =>
+  request<{ comment: unknown; comments: FeedbackDetailResponse['comments'] }>('POST', `/api/v1/feedback/${id}/comments`, token, data)
+
+export const updateFeedbackAdmin = (token: string, id: number, data: {
+  status?: FeedbackStatus
+  priority?: FeedbackLevel
+  severity?: FeedbackLevel
+  type?: FeedbackType
+}) =>
+  request<FeedbackItem>('PATCH', `/api/v1/admin/feedback/${id}`, token, data)
 
 // Push notifications (quiet — endpoint may not exist)
 export const getVapidKey = () =>

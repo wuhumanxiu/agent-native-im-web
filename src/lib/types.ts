@@ -164,6 +164,54 @@ export interface Attachment {
   content?: string
 }
 
+// ─── Platform Feedback ───────────────────────────────────────────
+export type FeedbackType = 'bug' | 'feature' | 'question' | 'account' | 'other'
+export type FeedbackLevel = 'low' | 'normal' | 'high' | 'urgent'
+export type FeedbackStatus = 'open' | 'triaged' | 'planned' | 'in_progress' | 'resolved' | 'closed'
+
+export interface FeedbackItem {
+  id: number
+  public_id: string
+  submitter_entity_id: number
+  type: FeedbackType
+  severity: FeedbackLevel
+  priority: FeedbackLevel
+  status: FeedbackStatus
+  title: string
+  description: string
+  contact?: string
+  attachments?: Attachment[]
+  created_at: string
+  updated_at: string
+  last_comment_at?: string
+  submitter?: Entity
+}
+
+export interface FeedbackComment {
+  id: number
+  feedback_id: number
+  author_entity_id: number
+  body: string
+  visibility: 'public' | 'internal'
+  attachments?: Attachment[]
+  created_at: string
+  author?: Entity
+}
+
+export interface FeedbackListResponse {
+  items: FeedbackItem[]
+  total: number
+  limit: number
+  offset: number
+  admin: boolean
+}
+
+export interface FeedbackDetailResponse {
+  item: FeedbackItem
+  comments: FeedbackComment[]
+  admin: boolean
+}
+
 export interface ReactionSummary {
   emoji: string
   count: number
