@@ -25,6 +25,23 @@ describe('setMessages', () => {
     expect(state.byConv[100]).toHaveLength(2)
     expect(state.hasMore[100]).toBe(true)
   })
+
+  it('keeps newer in-memory messages when an older snapshot arrives', () => {
+    useMessagesStore.getState().setMessages(100, [makeMsg({ id: 1 }), makeMsg({ id: 3 })], false)
+    useMessagesStore.getState().setMessages(100, [makeMsg({ id: 1 }), makeMsg({ id: 2 })], true)
+
+    const msgs = useMessagesStore.getState().byConv[100]
+    expect(msgs.map((msg) => msg.id)).toEqual([1, 2, 3])
+    expect(useMessagesStore.getState().hasMore[100]).toBe(true)
+  })
+
+  it('replaces stale messages when the incoming snapshot is newer', () => {
+    useMessagesStore.getState().setMessages(100, [makeMsg({ id: 1 }), makeMsg({ id: 2 })], false)
+    useMessagesStore.getState().setMessages(100, [makeMsg({ id: 3 }), makeMsg({ id: 4 })], false)
+
+    const msgs = useMessagesStore.getState().byConv[100]
+    expect(msgs.map((msg) => msg.id)).toEqual([3, 4])
+  })
 })
 
 describe('prependMessages', () => {

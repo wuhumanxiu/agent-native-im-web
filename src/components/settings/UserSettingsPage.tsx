@@ -235,6 +235,7 @@ export function UserSettingsPage({ onBack }: Props) {
     { id: 'light-rose', label: t('settings.themeLightRose'), bg: '#fdf2f8', sidebar: '#fce7f3', bubble: '#f9a8d4', bubbleSelf: '#db2777', text: '#1e293b', gradient: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(219,39,119,0.06) 0%, transparent 60%)' },
     { id: 'light-ocean', label: t('settings.themeLightOcean'), bg: '#f0f9ff', sidebar: '#e0f2fe', bubble: '#bae6fd', bubbleSelf: '#0284c7', text: '#1e293b', gradient: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(2,132,199,0.06) 0%, transparent 60%)' },
     { id: 'light-green', label: t('settings.themeLightGreen'), bg: '#f0fdf4', sidebar: '#dcfce7', bubble: '#bbf7d0', bubbleSelf: '#16a34a', text: '#1e293b', gradient: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(22,163,74,0.06) 0%, transparent 60%)' },
+    { id: 'light-phoenix', label: t('settings.themeLightPhoenix'), bg: '#fff6ef', sidebar: '#fff0e3', bubble: '#ffffff', bubbleSelf: '#ffb59e', text: '#2f231e', gradient: 'radial-gradient(ellipse 80% 48% at 14% 0%, rgba(240,96,72,0.13) 0%, transparent 58%), radial-gradient(ellipse 62% 44% at 88% 8%, rgba(255,128,48,0.11) 0%, transparent 52%)' },
   ]
 
   const darkThemes: ThemeItem[] = [

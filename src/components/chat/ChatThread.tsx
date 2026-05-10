@@ -823,6 +823,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
         <SkeletonLoader variant="chat-messages" />
       ) : (
         <MessageList
+          conversationId={conversation.id}
           messages={searchResults ?? messages}
           myEntityId={myEntity.id}
           loading={searchResults !== null ? searchLoading : loading}

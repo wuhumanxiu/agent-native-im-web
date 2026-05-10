@@ -12,6 +12,7 @@ import type { ReadReceipt } from '@/store/conversations'
 import { formatDateSeparator } from '@/lib/utils'
 
 interface Props {
+  conversationId?: number
   messages: Message[]
   myEntityId: number
   loading?: boolean
@@ -35,17 +36,29 @@ interface Props {
   progress?: ProgressEntry
 }
 
-export function MessageList({ messages, myEntityId, loading, refreshing = false, hasMore, lastReadMessageId, streams, participants, readReceipts, onLoadMore, onRefresh, onInteractionReply, onRevoke, onReply, onReact, onRetryOutbox, onCancelStream, onEntitySendMessage, onEntityViewDetails, thinkingEntity, progress }: Props) {
+export function MessageList({ conversationId, messages, myEntityId, loading, refreshing = false, hasMore, lastReadMessageId, streams, participants, readReceipts, onLoadMore, onRefresh, onInteractionReply, onRevoke, onReply, onReact, onRetryOutbox, onCancelStream, onEntitySendMessage, onEntityViewDetails, thinkingEntity, progress }: Props) {
   const { t } = useTranslation()
   const endRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const prevLengthRef = useRef(0)
+  const prevLastMessageIdRef = useRef<number | undefined>(undefined)
+  const prevConversationIdRef = useRef<number | undefined>(conversationId)
   const isNearBottomRef = useRef(true)
+  const forceBottomUntilSettledRef = useRef(true)
   const [highlightedMsgId, setHighlightedMsgId] = useState<number | null>(null)
   const [pullDistance, setPullDistance] = useState(0)
   const touchStartYRef = useRef(0)
   const isPullingRef = useRef(false)
   const PULL_THRESHOLD = 70
+  const lastMessageId = messages[messages.length - 1]?.id
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    requestAnimationFrame(() => {
+      endRef.current?.scrollIntoView({ behavior })
+      // A second frame catches late layout changes from markdown, images, and cache -> network swaps.
+      requestAnimationFrame(() => endRef.current?.scrollIntoView({ behavior: 'auto' }))
+    })
+  }, [])
 
   // Scroll to a specific message and briefly highlight it
   const handleScrollToMessage = useCallback((msgId: number) => {
@@ -99,39 +112,64 @@ export function MessageList({ messages, myEntityId, loading, refreshing = false,
     setPullDistance(0)
   }, [onRefresh, pullDistance, refreshing])
 
-  // Auto-scroll on new messages
+  // Reset scroll intent when switching conversations. Opening a conversation should show the latest message.
   useEffect(() => {
-    if (messages.length > prevLengthRef.current && isNearBottomRef.current) {
-      endRef.current?.scrollIntoView({ behavior: messages.length - prevLengthRef.current > 5 ? 'auto' : 'smooth' })
+    if (conversationId === prevConversationIdRef.current) return
+    prevConversationIdRef.current = conversationId
+    prevLengthRef.current = 0
+    prevLastMessageIdRef.current = undefined
+    isNearBottomRef.current = true
+    forceBottomUntilSettledRef.current = true
+  }, [conversationId])
+
+  // During initial cache/network hydration, keep the thread anchored to the latest message.
+  useEffect(() => {
+    if (messages.length === 0) return
+    if (forceBottomUntilSettledRef.current) {
+      scrollToBottom('auto')
+    }
+  }, [messages.length, lastMessageId, scrollToBottom])
+
+  useEffect(() => {
+    if (loading || messages.length === 0 || !forceBottomUntilSettledRef.current) return
+    scrollToBottom('auto')
+    const timer = setTimeout(() => {
+      forceBottomUntilSettledRef.current = false
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [loading, messages.length, lastMessageId, scrollToBottom])
+
+  // Auto-scroll on new/latest messages. Message count can stay the same when cache is replaced by fresh API data.
+  useEffect(() => {
+    const latestChanged = prevLastMessageIdRef.current !== undefined && lastMessageId !== prevLastMessageIdRef.current
+    const lengthIncreased = messages.length > prevLengthRef.current
+    if ((lengthIncreased || latestChanged) && isNearBottomRef.current) {
+      scrollToBottom(messages.length - prevLengthRef.current > 5 ? 'auto' : 'smooth')
     }
     prevLengthRef.current = messages.length
-  }, [messages.length])
+    prevLastMessageIdRef.current = lastMessageId
+  }, [messages.length, lastMessageId, scrollToBottom])
 
   // Auto-scroll during streaming updates (when user is near bottom)
   const streamContent = streams?.map(s => s.layers.summary || '').join('') || ''
   useEffect(() => {
     if (streams && streams.length > 0 && isNearBottomRef.current) {
-      endRef.current?.scrollIntoView({ behavior: 'smooth' })
+      scrollToBottom('smooth')
     }
-  }, [streamContent, streams])
+  }, [streamContent, streams, scrollToBottom])
 
   // Auto-scroll when thinking indicator or progress appears
   useEffect(() => {
     if (thinkingEntity && isNearBottomRef.current) {
-      endRef.current?.scrollIntoView({ behavior: 'smooth' })
+      scrollToBottom('smooth')
     }
-  }, [thinkingEntity])
+  }, [thinkingEntity, scrollToBottom])
 
   useEffect(() => {
     if (progress && isNearBottomRef.current) {
-      endRef.current?.scrollIntoView({ behavior: 'smooth' })
+      scrollToBottom('smooth')
     }
-  }, [progress])
-
-  // Initial scroll
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'auto' })
-  }, [])
+  }, [progress, scrollToBottom])
 
   // Build message map for reply previews
   const messageMap = useMemo(() => {

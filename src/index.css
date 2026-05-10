@@ -238,6 +238,40 @@
 }
 [data-theme="light-green"] ::-webkit-scrollbar-thumb { background: oklch(80% 0.012 150); }
 
+/* Theme: light-phoenix — porcelain light with ember accents */
+[data-theme="light-phoenix"] {
+  --color-bg-primary: #fff6ef;
+  --color-bg-secondary: #fff0e3;
+  --color-bg-tertiary: #ffffff;
+  --color-bg-hover: #ffe6d8;
+  --color-bg-active: #ffd6c5;
+  --color-bg-input: #fffdfb;
+  --color-border: #f0d0c1;
+  --color-border-subtle: #f8e2d6;
+  --color-text-primary: #2f231e;
+  --color-text-secondary: #8a4d3d;
+  --color-text-muted: #b28a7a;
+  --color-accent: #ef5f48;
+  --color-accent-hover: #dc4b34;
+  --color-accent-dim: rgba(239, 95, 72, 0.12);
+  --color-success: #0f9f6e;
+  --color-warning: #f07c21;
+  --color-error: #e03d2f;
+  --color-bot: #d65d43;
+  --color-user: #ef5f48;
+  --color-bubble-self: #ffb59e;
+  --color-bubble-other: #ffffff;
+  --color-bg-gradient:
+    radial-gradient(ellipse 80% 48% at 14% 0%, rgba(239, 95, 72, 0.13) 0%, transparent 58%),
+    radial-gradient(ellipse 62% 44% at 88% 8%, rgba(240, 124, 33, 0.11) 0%, transparent 52%);
+  --color-markdown-code-bg: #fff0e6;
+  --color-markdown-code-text: #3a2119;
+  --color-markdown-code-border: #efc9b8;
+  --color-markdown-inline-code-bg: rgba(239, 95, 72, 0.10);
+  --color-markdown-inline-code-text: #8d2f20;
+}
+[data-theme="light-phoenix"] ::-webkit-scrollbar-thumb { background: #e5b7a4; }
+
 /* Theme: green — forest atmosphere */
 [data-theme="green"] {
   --color-bg-primary: oklch(7.5% 0.02 150);

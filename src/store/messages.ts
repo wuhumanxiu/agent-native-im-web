@@ -51,6 +51,24 @@ interface MessagesState {
   cleanStaleProgress: () => void
 }
 
+function maxPositiveMessageId(messages: Message[]): number {
+  return messages.reduce((max, msg) => Math.max(max, msg.id > 0 ? msg.id : 0), 0)
+}
+
+function mergeMessagesById(incoming: Message[], existing: Message[]): Message[] {
+  const byId = new Map<number, Message>()
+  for (const msg of incoming) {
+    if (msg.id > 0) byId.set(msg.id, msg)
+  }
+  for (const msg of existing) {
+    if (msg.id > 0 && !byId.has(msg.id)) byId.set(msg.id, msg)
+  }
+  return Array.from(byId.values()).sort((a, b) => {
+    if (a.id !== b.id) return a.id - b.id
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  })
+}
+
 export const useMessagesStore = create<MessagesState>((set) => ({
   byConv: {},
   hasMore: {},
@@ -61,9 +79,15 @@ export const useMessagesStore = create<MessagesState>((set) => ({
 
   setMessages: (convId, msgs, hasMore) =>
     set((s) => {
-      const maxId = msgs.reduce((max, m) => Math.max(max, m.id ?? 0), s.latestMessageId)
+      const existing = s.byConv[convId] || []
+      const incomingMax = maxPositiveMessageId(msgs)
+      const existingMax = maxPositiveMessageId(existing)
+      const nextMessages = existingMax > incomingMax
+        ? mergeMessagesById(msgs, existing)
+        : msgs
+      const maxId = Math.max(s.latestMessageId, incomingMax, existingMax)
       return {
-        byConv: { ...s.byConv, [convId]: msgs },
+        byConv: { ...s.byConv, [convId]: nextMessages },
         hasMore: { ...s.hasMore, [convId]: hasMore },
         latestMessageId: maxId,
       }
