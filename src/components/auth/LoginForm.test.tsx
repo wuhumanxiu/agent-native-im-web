@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import '@testing-library/jest-dom'
 import { LoginForm } from './LoginForm'
 
@@ -21,10 +22,12 @@ describe('LoginForm', () => {
     })
 
     render(
-      <LoginForm
-        onLogin={vi.fn(async () => {})}
-        offlineHint="First-time sign-in still needs a live connection."
-      />,
+      <MemoryRouter>
+        <LoginForm
+          onLogin={vi.fn(async () => {})}
+          offlineHint="First-time sign-in still needs a live connection."
+        />
+      </MemoryRouter>,
     )
 
     expect(screen.getByText('First-time sign-in still needs a live connection.')).toBeInTheDocument()

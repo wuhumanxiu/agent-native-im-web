@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LogIn, Loader2, ScanLine } from 'lucide-react'
+import { ArrowRight, BookOpenCheck, LogIn, Loader2, ScanLine } from 'lucide-react'
 import { applyGatewayUrl, clearGatewayUrl, getDefaultGatewayUrl, getGatewayUrl, persistGatewayUrl } from '@/lib/gateway'
 
 interface Props {
@@ -68,6 +69,24 @@ export function LoginForm({ onLogin, error, offlineHint, onWechatLogin, onSwitch
             {t('auth.tagline')}
           </p>
         </div>
+
+        <Link
+          to="/onboarding"
+          className="group mb-6 flex items-start gap-3 rounded-[24px] border border-[var(--color-accent)]/25 bg-[var(--color-accent-dim)] px-4 py-3.5 shadow-sm shadow-[var(--color-accent)]/10 transition-all hover:-translate-y-0.5 hover:border-[var(--color-accent)]/45 hover:bg-[var(--color-accent)]/14"
+        >
+          <span className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-[var(--color-accent)] text-white shadow-lg shadow-[var(--color-accent)]/20">
+            <BookOpenCheck className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-[var(--color-text-primary)]">
+              {t('onboarding.loginEntryTitle')}
+            </span>
+            <span className="mt-1 block text-xs leading-relaxed text-[var(--color-text-secondary)]">
+              {t('onboarding.loginEntryDescription')}
+            </span>
+          </span>
+          <ArrowRight className="mt-3 h-4 w-4 flex-shrink-0 text-[var(--color-accent)] transition-transform group-hover:translate-x-0.5" />
+        </Link>
 
         {/* Form — clean card, no glassmorphism */}
         <form

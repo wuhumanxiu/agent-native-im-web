@@ -1,9 +1,10 @@
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth'
 import { usePresenceStore } from '@/store/presence'
 import { EntityAvatar } from '@/components/entity/EntityAvatar'
 import { entityDisplayName, cn } from '@/lib/utils'
-import { Bot, Bell, Zap, Wifi, WifiOff, MessageSquare, MessagesSquare, UserPlus } from 'lucide-react'
+import { BookOpenCheck, Bot, Bell, Zap, Wifi, WifiOff, MessageSquare, MessagesSquare, UserPlus } from 'lucide-react'
 
 interface Props {
   botMode: boolean
@@ -39,6 +40,19 @@ export function Sidebar({ botMode, directMode, groupMode, friendsMode, inboxMode
         <Zap className="w-5 h-5 text-white" />
         </div>
       </div>
+
+      <Link
+        to="/onboarding"
+        className="group relative mb-1 flex w-12 flex-col items-center gap-1 rounded-2xl border border-[var(--color-accent)]/25 bg-[var(--color-accent-dim)] px-1 py-2 text-[var(--color-accent)] shadow-sm shadow-[var(--color-accent)]/10 transition-all hover:-translate-y-0.5 hover:border-[var(--color-accent)]/45 hover:bg-[var(--color-accent)]/16"
+        title={t('onboarding.sidebarEntry')}
+        aria-label={t('onboarding.sidebarEntry')}
+      >
+        <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[var(--color-error)] ring-2 ring-[var(--color-bg-secondary)]" />
+        <BookOpenCheck className="h-4.5 w-4.5" />
+        <span className="max-w-full truncate text-[9px] font-semibold leading-none">
+          {t('onboarding.sidebarEntryShort')}
+        </span>
+      </Link>
 
       {/* Direct chats */}
       <button

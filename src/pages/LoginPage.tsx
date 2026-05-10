@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth'
 import { LoginForm } from '@/components/auth/LoginForm'
 import { RegisterForm } from '@/components/auth/RegisterForm'
@@ -15,12 +15,15 @@ import type { Entity } from '@/lib/types'
 export function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const { setAuth } = useAuthStore()
   const token = useAuthStore((s) => s.token)
   const entity = useAuthStore((s) => s.entity)
 
   const [loginError, setLoginError] = useState('')
-  const [authPage, setAuthPage] = useState<'login' | 'register' | 'forgot' | 'terms' | 'privacy'>('login')
+  const [authPage, setAuthPage] = useState<'login' | 'register' | 'forgot' | 'terms' | 'privacy'>(() => (
+    location.pathname === '/register' ? 'register' : 'login'
+  ))
   const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false)
 
   useEffect(() => {
@@ -33,6 +36,11 @@ export function LoginPage() {
       window.removeEventListener('offline', onOffline)
     }
   }, [])
+
+  useEffect(() => {
+    if (location.pathname === '/register') setAuthPage('register')
+    if (location.pathname === '/login') setAuthPage('login')
+  }, [location.pathname])
 
   // If already logged in, redirect
   if (token && entity) {
