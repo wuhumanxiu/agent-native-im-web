@@ -2,11 +2,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/store/auth'
 import * as api from '@/lib/api'
-import type { ConversationMemory } from '@/lib/types'
+import type { ConversationMemory, Message } from '@/lib/types'
 import { useMessagesStore } from '@/store/messages'
 import {
   Plus, Trash2, Loader2, BarChart3, Eraser,
 } from 'lucide-react'
+
+const EMPTY_MESSAGES: Message[] = []
 
 interface Props {
   conversationId: number
@@ -17,7 +19,7 @@ export function MemorySection({ conversationId, canManage }: Props) {
   const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)!
 
-  const messages = useMessagesStore((s) => s.byConv[conversationId] ?? [])
+  const messages = useMessagesStore((s) => s.byConv[conversationId] ?? EMPTY_MESSAGES)
   const [memories, setMemories] = useState<ConversationMemory[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
