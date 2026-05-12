@@ -83,6 +83,12 @@ export function OnboardingPage() {
               >
                 {isAuthed ? t('onboarding.backToApp') : t('auth.signIn')}
               </Link>
+              <Link
+                to="/developers"
+                className="hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-bg-hover)] md:inline-flex"
+              >
+                Developers
+              </Link>
             </div>
           </header>
 
