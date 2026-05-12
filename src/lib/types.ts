@@ -28,6 +28,8 @@ export interface FriendRequest {
   id: number
   source_entity_id: number
   target_entity_id: number
+  source_public_id?: string
+  target_public_id?: string
   status: 'pending' | 'accepted' | 'rejected' | 'canceled'
   message?: string
   resolved_by?: number
@@ -44,6 +46,8 @@ export interface NotificationRecord {
   id: number
   recipient_entity_id: number
   actor_entity_id?: number
+  recipient_public_id?: string
+  actor_public_id?: string
   kind: string
   status: NotificationStatus
   title: string
@@ -102,6 +106,7 @@ export interface Participant {
   id: number
   conversation_id: number
   entity_id: number
+  entity_public_id?: string
   role: ParticipantRole
   subscription_mode: SubscriptionMode
   context_window?: number
@@ -216,6 +221,7 @@ export interface ReactionSummary {
   emoji: string
   count: number
   entity_ids: number[]
+  public_ids?: string[]
 }
 
 export interface Message {

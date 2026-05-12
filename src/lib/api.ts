@@ -189,15 +189,22 @@ export const getConversation = (token: string, id: number) =>
 export const getConversationByPublicId = (token: string, publicId: string) =>
   request<Conversation>('GET', `/api/v1/conversations/by-public-id/${encodeURIComponent(publicId)}`, token)
 
-export const createConversation = (token: string, data: { title: string; conv_type?: string; participant_ids?: number[]; source_entity_id?: number }) =>
+export const createConversation = (token: string, data: {
+  title: string
+  conv_type?: string
+  participant_ids?: number[]
+  participant_public_ids?: string[]
+  source_entity_id?: number
+  source_public_id?: string
+}) =>
   request<Conversation>('POST', '/api/v1/conversations', token, data)
 
 export const updateConversation = (token: string, id: number, data: { title?: string; description?: string; prompt?: string }) =>
   request<Conversation>('PUT', `/api/v1/conversations/${id}`, token, data)
 
 // Participants
-export const addParticipant = (token: string, convId: number, entityId: number, role?: string) =>
-  request('POST', `/api/v1/conversations/${convId}/participants`, token, { entity_id: entityId, role })
+export const addParticipant = (token: string, convId: number, entityId: number, role?: string, entityPublicId?: string) =>
+  request('POST', `/api/v1/conversations/${convId}/participants`, token, { entity_id: entityId, entity_public_id: entityPublicId, role })
 
 export const removeParticipant = (token: string, convId: number, entityId: number) =>
   request('DELETE', `/api/v1/conversations/${convId}/participants/${entityId}`, token)
@@ -285,36 +292,60 @@ export const updateEntity = (token: string, id: number, data: {
   request<Entity>('PUT', `/api/v1/entities/${id}`, token, data)
 
 // Friends
-export const listFriends = (token: string, entityId?: number) =>
-  request<Entity[]>('GET', `/api/v1/friends${entityId ? `?entity_id=${entityId}` : ''}`, token)
-
-export const listFriendRequests = (token: string, options?: { entityId?: number; direction?: 'incoming' | 'outgoing'; status?: string }) => {
+export const listFriends = (token: string, entityId?: number, publicId?: string) => {
   const params = new URLSearchParams()
-  if (options?.entityId) params.set('entity_id', String(options.entityId))
+  if (publicId) params.set('public_id', publicId)
+  else if (entityId) params.set('entity_id', String(entityId))
+  const qs = params.toString()
+  return request<Entity[]>('GET', `/api/v1/friends${qs ? `?${qs}` : ''}`, token)
+}
+
+export const listFriendRequests = (token: string, options?: { entityId?: number; publicId?: string; direction?: 'incoming' | 'outgoing'; status?: string }) => {
+  const params = new URLSearchParams()
+  if (options?.publicId) params.set('public_id', options.publicId)
+  else if (options?.entityId) params.set('entity_id', String(options.entityId))
   if (options?.direction) params.set('direction', options.direction)
   if (options?.status) params.set('status', options.status)
   const qs = params.toString()
   return request<FriendRequest[]>('GET', `/api/v1/friends/requests${qs ? `?${qs}` : ''}`, token)
 }
 
-export const createFriendRequest = (token: string, data: { target_entity_id: number; source_entity_id?: number; message?: string }) =>
+export const createFriendRequest = (token: string, data: {
+  target_entity_id?: number
+  target_public_id?: string
+  source_entity_id?: number
+  source_public_id?: string
+  message?: string
+}) =>
   request<FriendRequest>('POST', '/api/v1/friends/requests', token, data)
 
-export const acceptFriendRequest = (token: string, id: number, entityId?: number) =>
-  request('POST', `/api/v1/friends/requests/${id}/accept${entityId ? `?entity_id=${entityId}` : ''}`, token)
-
-export const rejectFriendRequest = (token: string, id: number, entityId?: number) =>
-  request('POST', `/api/v1/friends/requests/${id}/reject${entityId ? `?entity_id=${entityId}` : ''}`, token)
-
-export const cancelFriendRequest = (token: string, id: number, entityId?: number) =>
-  request('POST', `/api/v1/friends/requests/${id}/cancel${entityId ? `?entity_id=${entityId}` : ''}`, token)
-
-export const deleteFriend = (token: string, targetEntityId: number, entityId?: number) =>
-  request('DELETE', `/api/v1/friends/${targetEntityId}${entityId ? `?entity_id=${entityId}` : ''}`, token)
-
-export const listNotifications = (token: string, options?: { entityId?: number; status?: 'unread' | 'read'; limit?: number }) => {
+function actingQuery(entityId?: number, publicId?: string): string {
   const params = new URLSearchParams()
-  if (options?.entityId) params.set('entity_id', String(options.entityId))
+  if (publicId) params.set('public_id', publicId)
+  else if (entityId) params.set('entity_id', String(entityId))
+  const qs = params.toString()
+  return qs ? `?${qs}` : ''
+}
+
+export const acceptFriendRequest = (token: string, id: number, entityId?: number, publicId?: string) =>
+  request('POST', `/api/v1/friends/requests/${id}/accept${actingQuery(entityId, publicId)}`, token)
+
+export const rejectFriendRequest = (token: string, id: number, entityId?: number, publicId?: string) =>
+  request('POST', `/api/v1/friends/requests/${id}/reject${actingQuery(entityId, publicId)}`, token)
+
+export const cancelFriendRequest = (token: string, id: number, entityId?: number, publicId?: string) =>
+  request('POST', `/api/v1/friends/requests/${id}/cancel${actingQuery(entityId, publicId)}`, token)
+
+export const deleteFriend = (token: string, targetEntityId: number, entityId?: number, publicId?: string, targetPublicId?: string) => {
+  const query = actingQuery(entityId, publicId)
+  const suffix = targetPublicId ? `${query ? `${query}&` : '?'}target_public_id=${encodeURIComponent(targetPublicId)}` : query
+  return request('DELETE', `/api/v1/friends/${targetEntityId}${suffix}`, token)
+}
+
+export const listNotifications = (token: string, options?: { entityId?: number; publicId?: string; status?: 'unread' | 'read'; limit?: number }) => {
+  const params = new URLSearchParams()
+  if (options?.publicId) params.set('public_id', options.publicId)
+  else if (options?.entityId) params.set('entity_id', String(options.entityId))
   if (options?.status) params.set('status', options.status)
   if (options?.limit) params.set('limit', String(options.limit))
   const qs = params.toString()
@@ -324,11 +355,11 @@ export const listNotifications = (token: string, options?: { entityId?: number; 
 export const getInboxSnapshot = (token: string) =>
   request<InboxSnapshot>('GET', '/api/v1/inbox/snapshot', token)
 
-export const markNotificationRead = (token: string, id: number, entityId?: number) =>
-  request<NotificationRecord>('POST', `/api/v1/notifications/${id}/read${entityId ? `?entity_id=${entityId}` : ''}`, token)
+export const markNotificationRead = (token: string, id: number, entityId?: number, publicId?: string) =>
+  request<NotificationRecord>('POST', `/api/v1/notifications/${id}/read${actingQuery(entityId, publicId)}`, token)
 
-export const markAllNotificationsRead = (token: string, entityId?: number) =>
-  request('POST', `/api/v1/notifications/read-all${entityId ? `?entity_id=${entityId}` : ''}`, token)
+export const markAllNotificationsRead = (token: string, entityId?: number, publicId?: string) =>
+  request('POST', `/api/v1/notifications/read-all${actingQuery(entityId, publicId)}`, token)
 
 export const listBotAccessLinks = (token: string, botId: number) =>
   request<BotAccessLink[]>('GET', `/api/v1/bots/${botId}/access-links`, token)
@@ -366,8 +397,13 @@ export const regenerateEntityToken = (token: string, id: number) =>
     token,
   )
 
-export const batchPresence = (token: string, entityIds: number[]) =>
-  request<{ presence: Record<string, boolean> }>('POST', '/api/v1/presence/batch', token, { entity_ids: entityIds })
+export const batchPresence = (token: string, entityIds: number[], publicIds?: string[]) =>
+  request<{ presence: Record<string, boolean>; presence_by_public_id?: Record<string, boolean> }>(
+    'POST',
+    '/api/v1/presence/batch',
+    token,
+    publicIds && publicIds.length > 0 ? { public_ids: publicIds } : { entity_ids: entityIds },
+  )
 
 export const updateProfile = (token: string, data: { display_name?: string; avatar_url?: string; email?: string }) =>
   request<Entity>('PUT', '/api/v1/me', token, data)

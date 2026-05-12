@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/store/auth'
 import { useConversationsStore } from '@/store/conversations'
@@ -90,6 +90,13 @@ export function NewConversationSheet({ open, onClose, onCreated, preselectedEnti
     )
   }, [directCandidates, search])
 
+  const publicIdsForSelected = useCallback(() => {
+    const byId = new Map(directCandidates.map((entity) => [entity.id, entity]))
+    return Array.from(selected)
+      .map((id) => byId.get(id)?.public_id)
+      .filter((value): value is string => !!value)
+  }, [directCandidates, selected])
+
   const toggleSelect = (id: number) => {
     const next = new Set(selected)
     if (next.has(id)) next.delete(id)
@@ -115,10 +122,12 @@ export function NewConversationSheet({ open, onClose, onCreated, preselectedEnti
     if (selected.size === 0) return
     setCreating(true)
     const title = groupTitle || `Group (${selected.size + 1} members)`
+    const selectedPublicIds = publicIdsForSelected()
     const res = await api.createConversation(token, {
       title,
       conv_type: 'group',
-      participant_ids: Array.from(selected),
+      participant_ids: selectedPublicIds.length === selected.size ? undefined : Array.from(selected),
+      participant_public_ids: selectedPublicIds.length === selected.size ? selectedPublicIds : undefined,
     })
     if (res.ok && res.data) {
       onCreated(res.data)

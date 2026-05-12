@@ -61,6 +61,13 @@ export function NewConversationDialog({ onClose, onCreated, preselectedEntityId 
     !search || entityDisplayName(e).toLowerCase().includes(search.toLowerCase()) || e.name?.toLowerCase().includes(search.toLowerCase())
   )
 
+  const publicIdsForSelected = () => {
+    const byId = new Map(directCandidates.map((entity) => [entity.id, entity]))
+    return Array.from(selected)
+      .map((id) => byId.get(id)?.public_id)
+      .filter((value): value is string => !!value)
+  }
+
   const toggleSelect = (id: number) => {
     const next = new Set(selected)
     if (next.has(id)) next.delete(id)
@@ -89,11 +96,13 @@ export function NewConversationDialog({ onClose, onCreated, preselectedEntityId 
     }
 
     const convTitle = title || `Group (${selected.size + 1} members)`
+    const selectedPublicIds = publicIdsForSelected()
 
     const res = await api.createConversation(token, {
       title: convTitle,
       conv_type: isGroup ? 'group' : 'direct',
-      participant_ids: Array.from(selected),
+      participant_ids: selectedPublicIds.length === selected.size ? undefined : Array.from(selected),
+      participant_public_ids: selectedPublicIds.length === selected.size ? selectedPublicIds : undefined,
     })
 
     if (res.ok && res.data) {

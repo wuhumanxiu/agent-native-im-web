@@ -53,15 +53,16 @@ export function FriendsPage() {
   const loadSocial = useCallback(async () => {
     setLoading(true)
     const [friendsRes, incomingRes, outgoingRes] = await Promise.all([
-      api.listFriends(token, actingEntityId),
-      api.listFriendRequests(token, { entityId: actingEntityId, direction: 'incoming', status: 'pending' }),
-      api.listFriendRequests(token, { entityId: actingEntityId, direction: 'outgoing', status: 'pending' }),
+      api.listFriends(token, actingEntity.public_id ? undefined : actingEntityId, actingEntity.public_id),
+      api.listFriendRequests(token, { entityId: actingEntity.public_id ? undefined : actingEntityId, publicId: actingEntity.public_id, direction: 'incoming', status: 'pending' }),
+      api.listFriendRequests(token, { entityId: actingEntity.public_id ? undefined : actingEntityId, publicId: actingEntity.public_id, direction: 'outgoing', status: 'pending' }),
     ])
     if (friendsRes.ok && friendsRes.data) {
       setFriends(friendsRes.data)
       const friendIds = friendsRes.data.map((entity) => entity.id)
+      const friendPublicIds = friendsRes.data.map((entity) => entity.public_id).filter((value): value is string => !!value)
       if (friendIds.length > 0) {
-        const presenceRes = await api.batchPresence(token, friendIds)
+        const presenceRes = await api.batchPresence(token, friendIds, friendPublicIds.length === friendIds.length ? friendPublicIds : undefined)
         if (presenceRes.ok && presenceRes.data?.presence) {
           const presence = presenceRes.data.presence
           const onlineIds = friendIds.filter((friendId) => !!presence[String(friendId)])
@@ -74,7 +75,7 @@ export function FriendsPage() {
     if (incomingRes.ok && incomingRes.data) setIncoming(incomingRes.data)
     if (outgoingRes.ok && outgoingRes.data) setOutgoing(outgoingRes.data)
     setLoading(false)
-  }, [actingEntityId, setPresenceBatch, setPresenceUnknown, token])
+  }, [actingEntity.public_id, actingEntityId, setPresenceBatch, setPresenceUnknown, token])
 
   useEffect(() => {
     void loadSocial()
@@ -129,16 +130,19 @@ export function FriendsPage() {
 
   const sendRequest = useCallback(async (targetId: number) => {
     setSubmittingId(targetId)
+    const target = discoverable.find((entity) => entity.id === targetId)
     await api.createFriendRequest(token, {
-      source_entity_id: actingEntityId === me.id ? undefined : actingEntityId,
-      target_entity_id: targetId,
+      source_entity_id: actingEntity.public_id || actingEntityId === me.id ? undefined : actingEntityId,
+      source_public_id: actingEntity.id === me.id ? undefined : actingEntity.public_id,
+      target_entity_id: target?.public_id ? undefined : targetId,
+      target_public_id: target?.public_id,
     })
     setSubmittingId(null)
     await loadSocial()
     setQuery('')
     setSearchedQuery('')
     setDiscoverable([])
-  }, [actingEntityId, loadSocial, me.id, token])
+  }, [actingEntity.id, actingEntity.public_id, actingEntityId, discoverable, loadSocial, me.id, token])
 
   const acceptRequest = useCallback(async (id: number) => {
     const request = incoming.find((item) => item.id === id)
@@ -152,14 +156,14 @@ export function FriendsPage() {
       }
       removeFriendRequestFromStore(id)
     }
-    const res = await api.acceptFriendRequest(token, id, actingEntityId === me.id ? undefined : actingEntityId)
+    const res = await api.acceptFriendRequest(token, id, actingEntity.public_id || actingEntityId === me.id ? undefined : actingEntityId, actingEntity.id === me.id ? undefined : actingEntity.public_id)
     setSubmittingId(null)
     if (!res.ok) {
       await loadSocial()
       return
     }
     markNotificationsDirty()
-  }, [actingEntityId, incoming, loadSocial, me.id, removeFriendRequestFromStore, markNotificationsDirty, token])
+  }, [actingEntity.id, actingEntity.public_id, actingEntityId, incoming, loadSocial, me.id, removeFriendRequestFromStore, markNotificationsDirty, token])
 
   const rejectRequest = useCallback(async (id: number) => {
     const request = incoming.find((item) => item.id === id)
@@ -168,14 +172,14 @@ export function FriendsPage() {
       setIncoming((current) => current.filter((item) => item.id !== id))
       removeFriendRequestFromStore(id)
     }
-    const res = await api.rejectFriendRequest(token, id, actingEntityId === me.id ? undefined : actingEntityId)
+    const res = await api.rejectFriendRequest(token, id, actingEntity.public_id || actingEntityId === me.id ? undefined : actingEntityId, actingEntity.id === me.id ? undefined : actingEntity.public_id)
     setSubmittingId(null)
     if (!res.ok) {
       await loadSocial()
       return
     }
     markNotificationsDirty()
-  }, [actingEntityId, incoming, loadSocial, me.id, removeFriendRequestFromStore, markNotificationsDirty, token])
+  }, [actingEntity.id, actingEntity.public_id, actingEntityId, incoming, loadSocial, me.id, removeFriendRequestFromStore, markNotificationsDirty, token])
 
   const cancelRequest = useCallback(async (id: number) => {
     const request = outgoing.find((item) => item.id === id)
@@ -184,21 +188,22 @@ export function FriendsPage() {
       setOutgoing((current) => current.filter((item) => item.id !== id))
       removeFriendRequestFromStore(id)
     }
-    const res = await api.cancelFriendRequest(token, id, actingEntityId === me.id ? undefined : actingEntityId)
+    const res = await api.cancelFriendRequest(token, id, actingEntity.public_id || actingEntityId === me.id ? undefined : actingEntityId, actingEntity.id === me.id ? undefined : actingEntity.public_id)
     setSubmittingId(null)
     if (!res.ok) {
       await loadSocial()
       return
     }
     markNotificationsDirty()
-  }, [actingEntityId, loadSocial, me.id, outgoing, removeFriendRequestFromStore, markNotificationsDirty, token])
+  }, [actingEntity.id, actingEntity.public_id, actingEntityId, loadSocial, me.id, outgoing, removeFriendRequestFromStore, markNotificationsDirty, token])
 
   const removeFriend = useCallback(async (id: number) => {
     setSubmittingId(id)
-    await api.deleteFriend(token, id, actingEntityId === me.id ? undefined : actingEntityId)
+    const target = friends.find((entity) => entity.id === id)
+    await api.deleteFriend(token, id, actingEntity.public_id || actingEntityId === me.id ? undefined : actingEntityId, actingEntity.id === me.id ? undefined : actingEntity.public_id, target?.public_id)
     setSubmittingId(null)
     await loadSocial()
-  }, [actingEntityId, loadSocial, me.id, token])
+  }, [actingEntity.id, actingEntity.public_id, actingEntityId, friends, loadSocial, me.id, token])
 
   const handleOpenDirect = useCallback(async (target: Entity, mode: 'smart' | 'existing' | 'new' = 'smart') => {
     setSubmittingId(target.id)

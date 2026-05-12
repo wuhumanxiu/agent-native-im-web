@@ -112,7 +112,8 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
 
   const handleAddMember = async (entityId: number) => {
     setAddMemberLoading(true)
-    await api.addParticipant(token, conversation.id, entityId, 'member')
+    const entity = addableEntities.find((item) => item.id === entityId)
+    await api.addParticipant(token, conversation.id, entityId, 'member', entity?.public_id)
     setShowAddMember(false)
     setAddMemberSearch('')
     setAddMemberLoading(false)

@@ -50,7 +50,8 @@ export function GroupMembersPanel({ conversation, onClose, onUpdate }: Props) {
 
   const handleAdd = async (entityId: number) => {
     setLoading(true)
-    await api.addParticipant(token, conversation.id, entityId, 'member')
+    const entity = entities.find((item) => item.id === entityId)
+    await api.addParticipant(token, conversation.id, entityId, 'member', entity?.public_id)
     setLoading(false)
     setShowAddMember(false)
     onUpdate?.()

@@ -56,8 +56,10 @@ export async function openOrCreateDirectConversation(options: {
   const res = await api.createConversation(token, {
     title: buildDirectConversationTitle(t, target),
     conv_type: 'direct',
-    participant_ids: [target.id],
-    source_entity_id: actingEntity.id === target.id ? undefined : actingEntity.id,
+    participant_ids: target.public_id ? undefined : [target.id],
+    participant_public_ids: target.public_id ? [target.public_id] : undefined,
+    source_entity_id: actingEntity.public_id || actingEntity.id === target.id ? undefined : actingEntity.id,
+    source_public_id: actingEntity.id === target.id ? undefined : actingEntity.public_id,
   })
   if (!res.ok || !res.data) return null
   addConversation(res.data)
