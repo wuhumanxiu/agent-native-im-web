@@ -25,6 +25,7 @@ export function buildBotAccessText(params: {
     'npx -y @wzfukui/openclaw-ani-installer install',
     'npx -y @wzfukui/openclaw-ani-installer update',
     'npx -y @wzfukui/openclaw-ani-installer doctor',
+    '# Optional reproducible install: add --version 2026.5.12',
     '',
     '# Configure the OpenClaw ANI channel',
     `openclaw config set channels.ani.serverUrl "${gatewayUrl}"`,

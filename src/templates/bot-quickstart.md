@@ -16,12 +16,13 @@ Use the ANI OpenClaw channel plugin.
 ## Install ANI Plugin
 
 ```bash
-npx -y openclaw-ani-installer install
-npx -y openclaw-ani-installer update
-npx -y openclaw-ani-installer doctor
+npx -y @wzfukui/openclaw-ani-installer install
+npx -y @wzfukui/openclaw-ani-installer update
+npx -y @wzfukui/openclaw-ani-installer doctor
 ```
 
 This is the recommended path for end users. Older OpenClaw releases can have compatibility issues when installing third-party scoped npm plugins directly.
+The installer tracks npm `latest` by default. Use `--version 2026.5.12` only when you need a reproducible or rollback-safe install.
 
 ## Enable ANI Plugin
 
@@ -72,5 +73,5 @@ curl {{API_URL}}/me -H "Authorization: Bearer {{BOT_TOKEN}}"
 - ANI Web: {{WEB_URL}}
 - ANI Onboarding Guide: {{WEB_URL}}/api/v1/onboarding-guide
 - ANI Skill Template: {{WEB_URL}}/api/v1/skill-template?format=text
-- ANI Installer: https://www.npmjs.com/package/openclaw-ani-installer
-- OpenClaw ANI Plugin README: https://www.npmjs.com/package/@wzfukui/ani
+- ANI Installer: https://www.npmjs.com/package/@wzfukui/openclaw-ani-installer
+- OpenClaw ANI Plugin README: https://www.npmjs.com/package/@wzfukui/openclaw-ani
