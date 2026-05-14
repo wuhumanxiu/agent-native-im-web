@@ -4,6 +4,8 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { cn, entityDisplayName, formatTime, formatFileSize, authenticatedFileUrl } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
+import { useNotificationsStore } from '@/store/notifications'
+import * as api from '@/lib/api'
 import { EntityAvatar } from '@/components/entity/EntityAvatar'
 import { EntityPopoverCard } from '@/components/entity/EntityPopoverCard'
 import { InteractionCard } from './InteractionCard'
@@ -16,7 +18,7 @@ import type { Entity, EntityCardPayload, Message } from '@/lib/types'
 import { ReactionBar } from './ReactionBar'
 import {
   FileText, Download, Play, Pause,
-  Brain, Check, ChevronDown, ChevronUp, CornerUpLeft, Ban, CloudOff, Clock, RotateCcw, MoreHorizontal, Contact, Bot, User, ExternalLink, MessageSquare,
+  Brain, Check, ChevronDown, ChevronUp, CornerUpLeft, Ban, CloudOff, Clock, RotateCcw, MoreHorizontal, Contact, Bot, User, ExternalLink, MessageSquare, UserPlus, Loader2,
 } from 'lucide-react'
 
 /** Max collapsed height in px (~10 lines of text) */
@@ -117,9 +119,71 @@ function SharedEntityCard({
   onViewDetails?: (entity: Entity) => void
 }) {
   const { t } = useTranslation()
+  const token = useAuthStore((s) => s.token)
+  const myEntity = useAuthStore((s) => s.entity)
+  const markNotificationsDirty = useNotificationsStore((s) => s.markDirty)
+  const [friendState, setFriendState] = useState<'loading' | 'self' | 'friend' | 'pending' | 'stranger'>('loading')
+  const [requesting, setRequesting] = useState(false)
   const entity = entityFromCard(card)
   const isBot = card.entity_type === 'bot' || card.entity_type === 'service'
   const identity = card.bot_id || card.public_id || `@${card.name}`
+  const targetKey = card.public_id || String(card.entity_id || '')
+
+  useEffect(() => {
+    let cancelled = false
+    const targetId = card.entity_id
+    const targetPublicId = card.public_id
+    if (!token || !myEntity || (!targetId && !targetPublicId)) {
+      setFriendState('stranger')
+      return
+    }
+    if ((targetId && targetId === myEntity.id) || (targetPublicId && targetPublicId === myEntity.public_id)) {
+      setFriendState('self')
+      return
+    }
+
+    setFriendState('loading')
+    Promise.all([
+      api.listFriends(token),
+      api.listFriendRequests(token, { direction: 'outgoing', status: 'pending' }),
+    ]).then(([friendsRes, outgoingRes]) => {
+      if (cancelled) return
+      const friends = friendsRes.ok && friendsRes.data ? friendsRes.data : []
+      const outgoing = outgoingRes.ok && outgoingRes.data ? outgoingRes.data : []
+      const isFriend = friends.some((friend) =>
+        (targetId && friend.id === targetId) || (targetPublicId && friend.public_id === targetPublicId)
+      )
+      if (isFriend) {
+        setFriendState('friend')
+        return
+      }
+      const hasPending = outgoing.some((request) =>
+        (targetId && request.target_entity_id === targetId) || (targetPublicId && request.target_public_id === targetPublicId)
+      )
+      setFriendState(hasPending ? 'pending' : 'stranger')
+    }).catch(() => {
+      if (!cancelled) setFriendState('stranger')
+    })
+
+    return () => { cancelled = true }
+  }, [card.entity_id, card.public_id, myEntity, targetKey, token])
+
+  const handleAddFriend = useCallback(async () => {
+    if (!token || requesting || friendState !== 'stranger') return
+    setRequesting(true)
+    const res = await api.createFriendRequest(token, {
+      target_entity_id: card.public_id ? undefined : card.entity_id,
+      target_public_id: card.public_id,
+    })
+    setRequesting(false)
+    if (res.ok) {
+      setFriendState('pending')
+      markNotificationsDirty()
+    }
+  }, [card.entity_id, card.public_id, friendState, markNotificationsDirty, requesting, token])
+
+  const showMessageAction = friendState === 'friend' && !!onSendMessage
+  const showAddAction = friendState === 'stranger' || friendState === 'pending' || (friendState === 'loading' && !onSendMessage)
 
   return (
     <div className="min-w-[220px] max-w-[320px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)]/70 overflow-hidden">
@@ -143,15 +207,28 @@ function SharedEntityCard({
           <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)] truncate">{identity}</p>
         </div>
       </div>
-      {(onSendMessage || (isBot && onViewDetails)) && (
+      {((friendState !== 'self' && (showMessageAction || showAddAction)) || (isBot && onViewDetails)) && (
         <div className="px-3 pb-3 flex gap-2">
-          {onSendMessage && (
+          {friendState !== 'self' && showMessageAction && (
             <button
               onClick={() => onSendMessage(entity)}
               className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[var(--color-accent)] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[var(--color-accent-hover)] cursor-pointer"
             >
               <MessageSquare className="w-3 h-3" />
               {t('entityPopover.sendMessage')}
+            </button>
+          )}
+          {friendState !== 'self' && showAddAction && (
+            <button
+              onClick={() => void handleAddFriend()}
+              disabled={friendState === 'loading' || friendState === 'pending' || requesting}
+              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[var(--color-accent)] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[var(--color-accent-hover)] cursor-pointer disabled:cursor-default disabled:opacity-70"
+            >
+              {requesting || friendState === 'loading'
+                ? <Loader2 className="w-3 h-3 animate-spin" />
+                : <UserPlus className="w-3 h-3" />
+              }
+              {friendState === 'pending' ? t('friends.requestSent') : t('friends.add')}
             </button>
           )}
           {isBot && onViewDetails && (
