@@ -14,7 +14,7 @@ import { entityDisplayName, isBotOrService, cn } from '@/lib/utils'
 import { cacheMessages, getCachedMessages, enqueueOutboxMessage, getOutboxMessageByTempId, deleteOutboxMessage, updateOutboxMessage } from '@/lib/cache'
 import { DotsAnimation } from '@/components/ui/DotsAnimation'
 import { SkeletonLoader } from '@/components/ui/SkeletonLoader'
-import { Search, Users, ArrowLeft, Loader2, X, Settings, ListTodo, Bug, Check } from 'lucide-react'
+import { Search, Users, ArrowLeft, Loader2, X, Settings, ListTodo, Bug, Check, Contact, Send } from 'lucide-react'
 import { useSettingsStore } from '@/store/settings'
 import { inspectChatBubbles, copyToClipboard } from '@/lib/layout-inspector'
 
@@ -44,6 +44,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
   const progress = useMessagesStore((s) => s.progress[conversation.id])
   const setMessages = useMessagesStore((s) => s.setMessages)
   const prependMessages = useMessagesStore((s) => s.prependMessages)
+  const addMessage = useMessagesStore((s) => s.addMessage)
   const revokeMessage = useMessagesStore((s) => s.revokeMessage)
   const updateMessageReactions = useMessagesStore((s) => s.updateMessageReactions)
   const addOptimisticMessage = useMessagesStore((s) => s.addOptimisticMessage)
@@ -66,9 +67,12 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
   const [debugStatusKey, setDebugStatusKey] = useState<string | null>(null)
   const [initialLastRead, setInitialLastRead] = useState<number | undefined>(undefined)
   const [botThinkingEntity, setBotThinkingEntity] = useState<import('@/lib/types').Entity | null>(null)
+  const [shareCardEntity, setShareCardEntity] = useState<Entity | null>(null)
+  const [shareCardSendingId, setShareCardSendingId] = useState<number | null>(null)
   const botThinkingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dragCountRef = useRef(0)
   const updateConversation = useConversationsStore((s) => s.updateConversation)
+  const conversations = useConversationsStore((s) => s.conversations)
   const readReceipts = useConversationsStore((s) => s.readReceipts[conversation.id])
   const getPresenceState = usePresenceStore((s) => s.getPresenceState)
   const wsConnected = usePresenceStore((s) => s.wsConnected)
@@ -89,6 +93,18 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
   const conversationPublicId = typeof conversation.metadata?.public_id === 'string'
     ? conversation.metadata.public_id
     : conversation.public_id
+  const shareTargetConversations = useMemo(() => {
+    if (!shareCardEntity) return []
+    return conversations.filter((item) => {
+      if (item.id === conversation.id) return false
+      if (item.conv_type === 'direct') {
+        return !item.participants?.some((participant) => participant.entity_id === shareCardEntity.id)
+      }
+      return (item.participants || []).some((participant) =>
+        participant.entity_id !== myEntity.id && participant.entity_id !== shareCardEntity.id
+      )
+    })
+  }, [conversation.id, conversations, myEntity.id, shareCardEntity])
 
   // Check if current user is observer
   const myParticipant = conversation.participants?.find((p) => p.entity_id === myEntity.id)
@@ -530,7 +546,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
     }
   }, [token, conversation.id, conversationPublicId, myEntity, replyTo, addOptimisticMessage, replaceOptimisticMessage, removeOptimisticMessage, setOptimisticState, startBotThinking, resolveProcessingEntity, buildMentionPayload, buildConversationRefPayload])
 
-  const handleShareEntityCard = useCallback(async (entity: Entity) => {
+  const buildEntityCardMessage = useCallback((entity: Entity) => {
     const card: EntityCardPayload = {
       entity_id: entity.id,
       public_id: entity.public_id,
@@ -541,42 +557,43 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
       avatar_url: entity.avatar_url,
     }
     const summary = t('entityCard.shareSummary', { name: card.display_name })
-    const tempId = `temp-card-${Date.now()}-${Math.random()}`
-    const optimisticMsg: Message = {
-      id: -Math.floor(Math.random() * 1000000),
-      conversation_id: conversation.id,
-      conversation_public_id: conversationPublicId,
-      sender_id: myEntity.id,
-      sender_public_id: myEntity.public_id,
-      sender_type: myEntity.entity_type,
-      sender: myEntity,
-      content_type: 'text',
+    return {
+      content_type: 'text' as const,
       layers: {
         summary,
         data: { body: summary, entity_card: card },
       },
-      created_at: new Date().toISOString(),
     }
+  }, [t])
 
-    addOptimisticMessage(tempId, optimisticMsg)
+  const handleShareEntityCard = useCallback((entity: Entity) => {
+    setShareCardEntity(entity)
+  }, [])
+
+  const handleSendEntityCardToConversation = useCallback(async (targetConversation: Conversation) => {
+    if (!shareCardEntity || shareCardSendingId !== null) return
+    setShareCardSendingId(targetConversation.id)
+    const message = buildEntityCardMessage(shareCardEntity)
     try {
       const res = await api.sendMessage(token, {
-        ...buildConversationRefPayload(),
-        content_type: 'text',
-        layers: {
-          summary,
-          data: { body: summary, entity_card: card },
-        },
+        conversation_id: targetConversation.id,
+        conversation_public_id: targetConversation.public_id || (typeof targetConversation.metadata?.public_id === 'string' ? targetConversation.metadata.public_id : undefined),
+        ...message,
       })
       if (res.ok && res.data) {
-        replaceOptimisticMessage(tempId, res.data)
-      } else {
-        setOptimisticState(tempId, 'failed')
+        addMessage(res.data)
+        updateConversation(targetConversation.id, {
+          last_message: res.data,
+          updated_at: res.data.created_at,
+        })
+        setShareCardEntity(null)
       }
     } catch {
-      setOptimisticState(tempId, 'failed')
+      // Global API error handling will surface the failure when available.
+    } finally {
+      setShareCardSendingId(null)
     }
-  }, [addOptimisticMessage, buildConversationRefPayload, conversation.id, conversationPublicId, myEntity, replaceOptimisticMessage, setOptimisticState, t, token])
+  }, [addMessage, buildEntityCardMessage, shareCardEntity, shareCardSendingId, token, updateConversation])
 
   const handleRetryOutbox = useCallback(async (tempId: string) => {
     const item = await getOutboxMessageByTempId(tempId)
@@ -976,6 +993,81 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
           conversation={conversation}
           onClose={() => setShowMembers(false)}
         />
+      )}
+
+      {shareCardEntity && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/55 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => shareCardSendingId === null && setShareCardEntity(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-2xl overflow-hidden"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-border)]">
+              <EntityAvatar entity={shareCardEntity} size="sm" />
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
+                  {t('entityCard.shareTo')}
+                </h3>
+                <p className="text-xs text-[var(--color-text-muted)] truncate">
+                  {entityDisplayName(shareCardEntity)}
+                </p>
+              </div>
+              <button
+                onClick={() => setShareCardEntity(null)}
+                disabled={shareCardSendingId !== null}
+                aria-label={t('common.close')}
+                className="w-8 h-8 rounded-xl hover:bg-[var(--color-bg-hover)] flex items-center justify-center cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4 text-[var(--color-text-muted)]" />
+              </button>
+            </div>
+            <div className="max-h-[55vh] overflow-y-auto py-2">
+              {shareTargetConversations.length === 0 ? (
+                <div className="px-4 py-8 text-center">
+                  <Contact className="w-8 h-8 mx-auto text-[var(--color-text-muted)] mb-2" />
+                  <p className="text-sm text-[var(--color-text-secondary)]">{t('entityCard.noShareTargets')}</p>
+                </div>
+              ) : shareTargetConversations.map((targetConversation) => {
+                const targetIsGroup = targetConversation.conv_type === 'group' || targetConversation.conv_type === 'channel'
+                const targetEntity = targetConversation.participants?.find((participant) => participant.entity_id !== myEntity.id)?.entity
+                const title = targetConversation.title || (targetIsGroup ? t('conversation.groupChat') : entityDisplayName(targetEntity))
+                const subtitle = targetIsGroup
+                  ? t('conversation.participants', { count: targetConversation.participants?.length || 0 })
+                  : targetEntity?.public_id || targetEntity?.bot_id || ''
+                const sending = shareCardSendingId === targetConversation.id
+                return (
+                  <button
+                    key={targetConversation.id}
+                    onClick={() => void handleSendEntityCardToConversation(targetConversation)}
+                    disabled={shareCardSendingId !== null}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[var(--color-bg-hover)] transition-colors cursor-pointer disabled:opacity-60"
+                  >
+                    {targetIsGroup ? (
+                      <div className="w-9 h-9 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-border)] flex items-center justify-center flex-shrink-0">
+                        <Users className="w-4 h-4 text-[var(--color-accent)]" />
+                      </div>
+                    ) : (
+                      <EntityAvatar entity={targetEntity} size="sm" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{title}</p>
+                      {subtitle && <p className="text-xs text-[var(--color-text-muted)] truncate">{subtitle}</p>}
+                    </div>
+                    {sending ? (
+                      <Loader2 className="w-4 h-4 text-[var(--color-accent)] animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4 text-[var(--color-text-muted)]" />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Typing / Processing indicator */}

@@ -219,6 +219,7 @@
     "pullToRefresh": "Pull to refresh",
     "refreshing": "Refreshing...",
     "noMatches": "No matches",
+    "groupChat": "Group chat",
     "participants": "{{count}} participants",
     "online": "Online",
     "offline": "Offline",
@@ -773,7 +774,9 @@
   },
   "entityCard": {
     "sharedCard": "Profile card",
-    "shareSummary": "Shared {{name}}'s profile card"
+    "shareSummary": "Shared {{name}}'s profile card",
+    "shareTo": "Share profile card to",
+    "noShareTargets": "No other conversations available"
   },
   "pwa": {
     "installApp": "Install App",

@@ -219,6 +219,7 @@
     "pullToRefresh": "下拉刷新",
     "refreshing": "刷新中...",
     "noMatches": "无匹配结果",
+    "groupChat": "群聊",
     "participants": "{{count}} 位参与者",
     "online": "在线",
     "offline": "离线",
@@ -773,7 +774,9 @@
   },
   "entityCard": {
     "sharedCard": "个人名片",
-    "shareSummary": "分享了 {{name}} 的名片"
+    "shareSummary": "分享了 {{name}} 的名片",
+    "shareTo": "分享名片给",
+    "noShareTargets": "暂无可分享的其他会话"
   },
   "pwa": {
     "installApp": "安装应用",
