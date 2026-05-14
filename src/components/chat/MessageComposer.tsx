@@ -193,7 +193,6 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
         const display = (p.entity!.display_name || '').toLowerCase()
         return name.includes(q) || display.includes(q)
       })
-      .slice(0, 8)
   }, [enableMentions, mentionQuery, participants])
 
   // Reset mention index when candidates change
