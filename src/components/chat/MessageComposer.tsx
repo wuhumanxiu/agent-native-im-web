@@ -179,6 +179,7 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mentionRef = useRef<HTMLDivElement>(null)
+  const mentionOptionRefs = useRef<(HTMLButtonElement | null)[]>([])
   const isComposingRef = useRef(false)
 
   // Filter participants by mention query
@@ -199,6 +200,24 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
   useEffect(() => {
     setMentionIndex(0)
   }, [mentionCandidates.length])
+
+  useEffect(() => {
+    if (mentionQuery === null || mentionCandidates.length === 0) return
+    const container = mentionRef.current
+    const selected = mentionOptionRefs.current[mentionIndex]
+    if (!container || !selected) return
+
+    const selectedTop = selected.offsetTop
+    const selectedBottom = selectedTop + selected.offsetHeight
+    const visibleTop = container.scrollTop
+    const visibleBottom = visibleTop + container.clientHeight
+
+    if (selectedTop < visibleTop) {
+      container.scrollTop = selectedTop
+    } else if (selectedBottom > visibleBottom) {
+      container.scrollTop = selectedBottom - container.clientHeight
+    }
+  }, [mentionCandidates.length, mentionIndex, mentionQuery])
 
   // Focus textarea when reply is set
   useEffect(() => {
@@ -437,6 +456,7 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
           {mentionCandidates.map((p, i) => (
             <button
               key={p.entity_id}
+              ref={(node) => { mentionOptionRefs.current[i] = node }}
               onMouseDown={(e) => { e.preventDefault(); insertMention(p) }}
               className={cn(
                 'w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors cursor-pointer',
