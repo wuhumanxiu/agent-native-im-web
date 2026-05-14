@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EntityAvatar } from '@/components/entity/EntityAvatar'
-import { entityDisplayName, cn } from '@/lib/utils'
+import { entityDisplayName, cn, isBotOrService } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
 import { useConversationsStore } from '@/store/conversations'
 import { usePresenceStore } from '@/store/presence'
@@ -9,8 +9,8 @@ import { AgentConfigSection } from '@/components/conversation/AgentConfigSection
 import { MemorySection } from '@/components/conversation/MemorySection'
 import { InviteLinkSection } from '@/components/conversation/InviteLinkSection'
 import * as api from '@/lib/api'
-import { getCachedEntities } from '@/lib/cache'
-import type { Conversation } from '@/lib/types'
+import { loadAddableGroupMembers } from '@/lib/addable-members'
+import type { Conversation, Entity } from '@/lib/types'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
   X, UserMinus, UserPlus, Bell, BellOff, Crown, Shield, Eye,
@@ -46,7 +46,7 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
   const [idCopied, setIdCopied] = useState(false)
   const [idCopyError, setIdCopyError] = useState<string | null>(null)
   const [showAddMember, setShowAddMember] = useState(false)
-  const [addableEntities, setAddableEntities] = useState<import('@/lib/types').Entity[]>([])
+  const [addableEntities, setAddableEntities] = useState<Entity[]>([])
   const [addMemberSearch, setAddMemberSearch] = useState('')
   const [addMemberLoading, setAddMemberLoading] = useState(false)
   const publicId = (conversation.metadata as Record<string, unknown> | undefined)?.public_id
@@ -55,9 +55,16 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
   const participants = conversation.participants || []
   const myParticipant = participants.find((p) => p.entity_id === myEntity.id)
   const canManage = myParticipant?.role === 'owner' || myParticipant?.role === 'admin'
-  const canAddOwnBot = Boolean(myParticipant)
+  const canAddMember = Boolean(myParticipant)
   const isGroup = conversation.conv_type === 'group' || conversation.conv_type === 'channel'
   const muted = isMuted(conversation.id)
+  const filteredAddableEntities = useMemo(() => {
+    if (!addMemberSearch) return addableEntities
+    const q = addMemberSearch.toLowerCase()
+    return addableEntities.filter((e) =>
+      entityDisplayName(e).toLowerCase().includes(q) || e.name.toLowerCase().includes(q)
+    )
+  }, [addMemberSearch, addableEntities])
 
   const handleSaveTitle = async () => {
     if (!titleValue.trim() || titleValue === conversation.title) {
@@ -94,19 +101,7 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
   const handleOpenAddMember = async () => {
     setShowAddMember(true)
     setAddMemberLoading(true)
-    const existing = new Set(participants.map((p) => p.entity_id))
-    try {
-      const res = await api.listEntities(token)
-      if (res.ok && res.data) {
-        setAddableEntities((res.data as import('@/lib/types').Entity[]).filter((e) => e.entity_type === 'bot' && !existing.has(e.id)))
-      }
-    } catch {
-      // Network failed — fall back to cached entities
-      const cached = await getCachedEntities()
-      if (cached.length > 0) {
-        setAddableEntities(cached.filter((e) => e.entity_type === 'bot' && !existing.has(e.id)))
-      }
-    }
+    setAddableEntities(await loadAddableGroupMembers(token, myEntity.id, participants))
     setAddMemberLoading(false)
   }
 
@@ -118,6 +113,19 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
     setAddMemberSearch('')
     setAddMemberLoading(false)
     // Refresh happens through parent via websocket events
+  }
+
+  const handleRemoveMember = async (entityId: number) => {
+    const res = await api.removeParticipant(token, conversation.id, entityId)
+    if (res.ok) {
+      updateConversation(conversation.id, {
+        participants: participants.filter((participant) => participant.entity_id !== entityId),
+      })
+      const refreshed = await api.getConversation(token, conversation.id)
+      if (refreshed.ok && refreshed.data) {
+        updateConversation(conversation.id, { participants: refreshed.data.participants })
+      }
+    }
   }
 
   const handleLeave = async () => {
@@ -383,7 +391,7 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
           </div>
 
           {/* Add member inline */}
-          {canAddOwnBot && isGroup && !isArchived && (
+          {canAddMember && isGroup && !isArchived && (
             showAddMember ? (
               <div className="mt-2 space-y-2">
                 <div className="relative">
@@ -402,11 +410,7 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
                   </div>
                 ) : (
                   <div className="max-h-36 overflow-y-auto space-y-0.5">
-                    {addableEntities.filter((e) => {
-                      if (!addMemberSearch) return true
-                      const q = addMemberSearch.toLowerCase()
-                      return entityDisplayName(e).toLowerCase().includes(q) || e.name.toLowerCase().includes(q)
-                    }).map((e) => (
+                    {filteredAddableEntities.map((e) => (
                       <button
                         key={e.id}
                         onClick={() => handleAddMember(e.id)}
@@ -414,10 +418,12 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
                       >
                         <EntityAvatar entity={e} size="xs" />
                         <span className="text-xs text-[var(--color-text-primary)] truncate flex-1">{entityDisplayName(e)}</span>
-                        <span className="text-[9px] text-[var(--color-text-muted)]">{e.entity_type}</span>
+                        <span className="text-[9px] text-[var(--color-text-muted)]">
+                          {isBotOrService(e) ? t('friends.yourBot') : t('friends.friend')}
+                        </span>
                       </button>
                     ))}
-                    {addableEntities.length === 0 && (
+                    {filteredAddableEntities.length === 0 && (
                       <p className="text-[10px] text-[var(--color-text-muted)] text-center py-2">{t('common.noEntities')}</p>
                     )}
                   </div>
@@ -435,7 +441,7 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
                 className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 cursor-pointer transition-colors"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                {t('common.addMyBot')}
+                {t('common.addMember')}
               </button>
             )
           )}
@@ -484,7 +490,7 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
         confirmLabel={t('common.removeMember')}
         onConfirm={async () => {
           if (removeMemberId !== null) {
-            await api.removeParticipant(token, conversation.id, removeMemberId)
+            await handleRemoveMember(removeMemberId)
           }
           setRemoveMemberId(null)
         }}

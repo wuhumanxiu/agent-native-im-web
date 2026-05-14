@@ -12,11 +12,11 @@ import { HandoverCard } from './HandoverCard'
 import { ImageLightbox } from '@/components/ui/ImageLightbox'
 import { MessageActionMenu } from '@/components/ui/MessageActionMenu'
 import { getSelectedMessageCopyText } from './message-copy'
-import type { Message } from '@/lib/types'
+import type { Entity, EntityCardPayload, Message } from '@/lib/types'
 import { ReactionBar } from './ReactionBar'
 import {
   FileText, Download, Play, Pause,
-  Brain, Check, ChevronDown, ChevronUp, CornerUpLeft, Ban, CloudOff, Clock, RotateCcw, MoreHorizontal,
+  Brain, Check, ChevronDown, ChevronUp, CornerUpLeft, Ban, CloudOff, Clock, RotateCcw, MoreHorizontal, Contact, Bot, User, ExternalLink, MessageSquare,
 } from 'lucide-react'
 
 /** Max collapsed height in px (~10 lines of text) */
@@ -91,6 +91,84 @@ function AudioPlayer({ url, duration: totalDuration }: { url?: string; duration?
   )
 }
 
+function entityFromCard(card: EntityCardPayload): Entity {
+  return {
+    id: card.entity_id || 0,
+    public_id: card.public_id,
+    bot_id: card.bot_id,
+    entity_type: card.entity_type,
+    name: card.name,
+    display_name: card.display_name,
+    avatar_url: card.avatar_url,
+    status: 'active',
+    metadata: {},
+    created_at: new Date(0).toISOString(),
+    updated_at: new Date(0).toISOString(),
+  }
+}
+
+function SharedEntityCard({
+  card,
+  onSendMessage,
+  onViewDetails,
+}: {
+  card: EntityCardPayload
+  onSendMessage?: (entity: Entity) => void
+  onViewDetails?: (entity: Entity) => void
+}) {
+  const { t } = useTranslation()
+  const entity = entityFromCard(card)
+  const isBot = card.entity_type === 'bot' || card.entity_type === 'service'
+  const identity = card.bot_id || card.public_id || `@${card.name}`
+
+  return (
+    <div className="min-w-[220px] max-w-[320px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)]/70 overflow-hidden">
+      <div className="px-3 py-2 border-b border-[var(--color-border)] flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+        <Contact className="w-3.5 h-3.5 text-[var(--color-accent)]" />
+        {t('entityCard.sharedCard')}
+      </div>
+      <div className="p-3 flex items-center gap-3">
+        <EntityAvatar entity={entity} size="md" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate">{card.display_name || card.name}</p>
+            <span className={cn(
+              'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium',
+              isBot ? 'bg-[var(--color-bot)]/15 text-[var(--color-bot)]' : 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]',
+            )}>
+              {isBot ? <Bot className="w-2.5 h-2.5" /> : <User className="w-2.5 h-2.5" />}
+              {isBot ? t('entityPopover.bot') : t('entityPopover.user')}
+            </span>
+          </div>
+          <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)] truncate">{identity}</p>
+        </div>
+      </div>
+      {(onSendMessage || (isBot && onViewDetails)) && (
+        <div className="px-3 pb-3 flex gap-2">
+          {onSendMessage && (
+            <button
+              onClick={() => onSendMessage(entity)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[var(--color-accent)] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[var(--color-accent-hover)] cursor-pointer"
+            >
+              <MessageSquare className="w-3 h-3" />
+              {t('entityPopover.sendMessage')}
+            </button>
+          )}
+          {isBot && onViewDetails && (
+            <button
+              onClick={() => onViewDetails(entity)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[var(--color-bg-hover)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] cursor-pointer"
+            >
+              <ExternalLink className="w-3 h-3" />
+              {t('entityPopover.viewDetails')}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface Props {
   message: Message
   isSelf: boolean
@@ -104,12 +182,13 @@ interface Props {
   onRetryOutbox?: (tempId: string) => void
   onEntitySendMessage?: (entity: import('@/lib/types').Entity) => void
   onEntityViewDetails?: (entity: import('@/lib/types').Entity) => void
+  onEntityShareCard?: (entity: import('@/lib/types').Entity) => void
   onScrollToMessage?: (msgId: number) => void
   showSender?: boolean
   isRead?: boolean
 }
 
-export function MessageBubble({ message, isSelf, myEntityId, replyMessage, interactionResponse, onInteractionReply, onRevoke, onReply, onReact, onRetryOutbox, onEntitySendMessage, onEntityViewDetails, onScrollToMessage, showSender = true, isRead }: Props) {
+export function MessageBubble({ message, isSelf, myEntityId, replyMessage, interactionResponse, onInteractionReply, onRevoke, onReply, onReact, onRetryOutbox, onEntitySendMessage, onEntityViewDetails, onEntityShareCard, onScrollToMessage, showSender = true, isRead }: Props) {
   const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const authUrl = (url: string | undefined) => authenticatedFileUrl(url, token)
@@ -197,9 +276,23 @@ export function MessageBubble({ message, isSelf, myEntityId, replyMessage, inter
 
   const renderContent = () => {
     const body = (layers.data?.body as string) || layers.summary || ''
+    const entityCard = layers.data?.entity_card
 
     // Bot/service messages default to markdown rendering
     const effectiveType = (message.content_type === 'text' && isBot) ? 'markdown' : message.content_type
+
+    if (entityCard) {
+      return (
+        <div className="space-y-2">
+          {body && <p className="text-sm leading-relaxed whitespace-pre-wrap">{body}</p>}
+          <SharedEntityCard
+            card={entityCard}
+            onSendMessage={onEntitySendMessage}
+            onViewDetails={onEntityViewDetails}
+          />
+        </div>
+      )
+    }
 
     switch (effectiveType) {
       case 'markdown':
@@ -652,6 +745,7 @@ export function MessageBubble({ message, isSelf, myEntityId, replyMessage, inter
         onClose={() => setPopoverAnchor(null)}
         onSendMessage={onEntitySendMessage}
         onViewDetails={onEntityViewDetails}
+        onShareCard={onEntityShareCard}
       />
     )}
 

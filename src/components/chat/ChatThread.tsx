@@ -9,7 +9,7 @@ import { useMessagesStore } from '@/store/messages'
 import { usePresenceStore } from '@/store/presence'
 import { useConversationsStore } from '@/store/conversations'
 import * as api from '@/lib/api'
-import type { Conversation, ActiveStream, Message, PresenceStateValue, MentionRef } from '@/lib/types'
+import type { Conversation, ActiveStream, Message, PresenceStateValue, MentionRef, Entity, EntityCardPayload } from '@/lib/types'
 import { entityDisplayName, isBotOrService, cn } from '@/lib/utils'
 import { cacheMessages, getCachedMessages, enqueueOutboxMessage, getOutboxMessageByTempId, deleteOutboxMessage, updateOutboxMessage } from '@/lib/cache'
 import { DotsAnimation } from '@/components/ui/DotsAnimation'
@@ -530,6 +530,54 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
     }
   }, [token, conversation.id, conversationPublicId, myEntity, replyTo, addOptimisticMessage, replaceOptimisticMessage, removeOptimisticMessage, setOptimisticState, startBotThinking, resolveProcessingEntity, buildMentionPayload, buildConversationRefPayload])
 
+  const handleShareEntityCard = useCallback(async (entity: Entity) => {
+    const card: EntityCardPayload = {
+      entity_id: entity.id,
+      public_id: entity.public_id,
+      bot_id: entity.bot_id,
+      entity_type: entity.entity_type,
+      name: entity.name,
+      display_name: entityDisplayName(entity),
+      avatar_url: entity.avatar_url,
+    }
+    const summary = t('entityCard.shareSummary', { name: card.display_name })
+    const tempId = `temp-card-${Date.now()}-${Math.random()}`
+    const optimisticMsg: Message = {
+      id: -Math.floor(Math.random() * 1000000),
+      conversation_id: conversation.id,
+      conversation_public_id: conversationPublicId,
+      sender_id: myEntity.id,
+      sender_public_id: myEntity.public_id,
+      sender_type: myEntity.entity_type,
+      sender: myEntity,
+      content_type: 'text',
+      layers: {
+        summary,
+        data: { body: summary, entity_card: card },
+      },
+      created_at: new Date().toISOString(),
+    }
+
+    addOptimisticMessage(tempId, optimisticMsg)
+    try {
+      const res = await api.sendMessage(token, {
+        ...buildConversationRefPayload(),
+        content_type: 'text',
+        layers: {
+          summary,
+          data: { body: summary, entity_card: card },
+        },
+      })
+      if (res.ok && res.data) {
+        replaceOptimisticMessage(tempId, res.data)
+      } else {
+        setOptimisticState(tempId, 'failed')
+      }
+    } catch {
+      setOptimisticState(tempId, 'failed')
+    }
+  }, [addOptimisticMessage, buildConversationRefPayload, conversation.id, conversationPublicId, myEntity, replaceOptimisticMessage, setOptimisticState, t, token])
+
   const handleRetryOutbox = useCallback(async (tempId: string) => {
     const item = await getOutboxMessageByTempId(tempId)
     if (!item || !item.id) return
@@ -916,6 +964,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
           onCancelStream={onCancelStream}
           onEntitySendMessage={onEntitySendMessage}
           onEntityViewDetails={onEntityViewDetails}
+          onEntityShareCard={isArchived ? undefined : handleShareEntityCard}
           thinkingEntity={botThinkingEntity || undefined}
           progress={progress}
         />

@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EntityAvatar } from '@/components/entity/EntityAvatar'
-import { entityDisplayName, cn } from '@/lib/utils'
+import { entityDisplayName, cn, isBotOrService } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth'
+import { useConversationsStore } from '@/store/conversations'
 import * as api from '@/lib/api'
-import { getCachedEntities } from '@/lib/cache'
+import { loadAddableGroupMembers } from '@/lib/addable-members'
 import type { Conversation, Entity } from '@/lib/types'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { X, UserPlus, UserMinus, Bell, BellOff, Crown, Shield, Loader2, Search } from 'lucide-react'
@@ -19,6 +20,7 @@ export function GroupMembersPanel({ conversation, onClose, onUpdate }: Props) {
   const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)!
   const myEntity = useAuthStore((s) => s.entity)!
+  const updateConversation = useConversationsStore((s) => s.updateConversation)
   const [showAddMember, setShowAddMember] = useState(false)
   const [entities, setEntities] = useState<Entity[]>([])
   const [loading, setLoading] = useState(false)
@@ -28,25 +30,21 @@ export function GroupMembersPanel({ conversation, onClose, onUpdate }: Props) {
   const participants = useMemo(() => conversation.participants || [], [conversation.participants])
   const myParticipant = participants.find((p) => p.entity_id === myEntity.id)
   const canManage = myParticipant?.role === 'owner' || myParticipant?.role === 'admin'
-  const canAddOwnBot = Boolean(myParticipant)
+  const canAddMember = Boolean(myParticipant)
+  const filteredEntities = useMemo(() => {
+    if (!addSearch) return entities
+    const q = addSearch.toLowerCase()
+    return entities.filter((e) => entityDisplayName(e).toLowerCase().includes(q) || e.name.toLowerCase().includes(q))
+  }, [addSearch, entities])
 
   // Load entities for adding members
   useEffect(() => {
     if (!showAddMember) return
-    const existing = new Set(participants.map((p) => p.entity_id))
-    api.listEntities(token).then((res) => {
-      if (res.ok && res.data) {
-        setEntities((res.data as Entity[]).filter((e) => e.entity_type === 'bot' && !existing.has(e.id)))
-      }
-    }).catch(() => {
-      // Network failed — fall back to cached entities
-      getCachedEntities().then((cached) => {
-        if (cached.length > 0) {
-          setEntities(cached.filter((e) => e.entity_type === 'bot' && !existing.has(e.id)))
-        }
-      })
-    })
-  }, [showAddMember, token, participants])
+    setLoading(true)
+    loadAddableGroupMembers(token, myEntity.id, participants)
+      .then(setEntities)
+      .finally(() => setLoading(false))
+  }, [showAddMember, token, myEntity.id, participants])
 
   const handleAdd = async (entityId: number) => {
     setLoading(true)
@@ -59,7 +57,16 @@ export function GroupMembersPanel({ conversation, onClose, onUpdate }: Props) {
 
   const handleRemove = async (entityId: number) => {
     setLoading(true)
-    await api.removeParticipant(token, conversation.id, entityId)
+    const res = await api.removeParticipant(token, conversation.id, entityId)
+    if (res.ok) {
+      updateConversation(conversation.id, {
+        participants: participants.filter((participant) => participant.entity_id !== entityId),
+      })
+      const refreshed = await api.getConversation(token, conversation.id)
+      if (refreshed.ok && refreshed.data) {
+        updateConversation(conversation.id, { participants: refreshed.data.participants })
+      }
+    }
     setLoading(false)
     setRemoveMemberId(null)
     onUpdate?.()
@@ -165,7 +172,7 @@ export function GroupMembersPanel({ conversation, onClose, onUpdate }: Props) {
         </div>
 
         {/* Add member */}
-        {canAddOwnBot && (
+        {canAddMember && (
           <div className="border-t border-[var(--color-border)]">
             {showAddMember ? (
               <div className="p-3 space-y-2 max-h-60 overflow-y-auto">
@@ -185,14 +192,10 @@ export function GroupMembersPanel({ conversation, onClose, onUpdate }: Props) {
                     <Loader2 className="w-4 h-4 text-[var(--color-text-muted)] animate-spin" />
                   </div>
                 )}
-                {entities.length === 0 && !loading && (
+                {filteredEntities.length === 0 && !loading && (
                   <p className="text-xs text-[var(--color-text-muted)] text-center py-2">{t('common.noEntities')}</p>
                 )}
-                {entities.filter((e) => {
-                  if (!addSearch) return true
-                  const q = addSearch.toLowerCase()
-                  return entityDisplayName(e).toLowerCase().includes(q) || e.name.toLowerCase().includes(q)
-                }).map((e) => (
+                {filteredEntities.map((e) => (
                   <button
                     key={e.id}
                     onClick={() => handleAdd(e.id)}
@@ -202,7 +205,9 @@ export function GroupMembersPanel({ conversation, onClose, onUpdate }: Props) {
                     <EntityAvatar entity={e} size="xs" />
                     <div className="flex-1 min-w-0">
                       <span className="text-sm text-[var(--color-text-primary)] truncate block">{entityDisplayName(e)}</span>
-                      <span className="text-[10px] text-[var(--color-text-muted)]">@{e.name} · {e.entity_type}</span>
+                      <span className="text-[10px] text-[var(--color-text-muted)]">
+                        @{e.name} · {isBotOrService(e) ? t('friends.yourBot') : t('friends.friend')}
+                      </span>
                     </div>
                   </button>
                 ))}
@@ -219,7 +224,7 @@ export function GroupMembersPanel({ conversation, onClose, onUpdate }: Props) {
                 className="w-full flex items-center justify-center gap-1.5 px-5 py-3 text-xs font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 cursor-pointer transition-colors"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                {t('common.addMyBot')}
+                {t('common.addMember')}
               </button>
             )}
           </div>

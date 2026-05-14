@@ -768,7 +768,12 @@
     "pending": "待审批",
     "joined": "加入于",
     "sendMessage": "发消息",
+    "shareCard": "分享名片",
     "viewDetails": "查看详情"
+  },
+  "entityCard": {
+    "sharedCard": "个人名片",
+    "shareSummary": "分享了 {{name}} 的名片"
   },
   "pwa": {
     "installApp": "安装应用",

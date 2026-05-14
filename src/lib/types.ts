@@ -137,8 +137,18 @@ export interface MessageLayers {
   summary?: string
   thinking?: string
   status?: StreamStatus
-  data?: Record<string, unknown>
+  data?: Record<string, unknown> & { entity_card?: EntityCardPayload }
   interaction?: InteractionLayer
+}
+
+export interface EntityCardPayload {
+  entity_id?: number
+  public_id?: string
+  bot_id?: string
+  entity_type: EntityType
+  name: string
+  display_name: string
+  avatar_url?: string
 }
 
 export interface StreamStatus {

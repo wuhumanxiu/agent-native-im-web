@@ -768,7 +768,12 @@
     "pending": "Pending",
     "joined": "Joined",
     "sendMessage": "Message",
+    "shareCard": "Share card",
     "viewDetails": "Details"
+  },
+  "entityCard": {
+    "sharedCard": "Profile card",
+    "shareSummary": "Shared {{name}}'s profile card"
   },
   "pwa": {
     "installApp": "Install App",

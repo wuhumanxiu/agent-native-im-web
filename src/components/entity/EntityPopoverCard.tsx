@@ -6,7 +6,7 @@ import { cn, entityDisplayName, entityColor, isBotOrService, formatTime } from '
 import type { Entity, PresenceStateValue } from '@/lib/types'
 import { usePresenceStore } from '@/store/presence'
 import { getEntityPresenceSemantic, getEntityStatusLabel } from '@/lib/entity-status'
-import { Bot, User, MessageSquare, ExternalLink, Trash2, X } from 'lucide-react'
+import { Bot, User, MessageSquare, ExternalLink, Trash2, X, Contact } from 'lucide-react'
 
 interface Props {
   entity: Entity
@@ -14,11 +14,12 @@ interface Props {
   onClose: () => void
   onSendMessage?: (entity: Entity) => void
   onViewDetails?: (entity: Entity) => void
+  onShareCard?: (entity: Entity) => void
   onRemoveRelationship?: (entity: Entity) => void
   removeLabel?: string
 }
 
-export function EntityPopoverCard({ entity, anchorRect, onClose, onSendMessage, onViewDetails, onRemoveRelationship, removeLabel }: Props) {
+export function EntityPopoverCard({ entity, anchorRect, onClose, onSendMessage, onViewDetails, onShareCard, onRemoveRelationship, removeLabel }: Props) {
   const { t } = useTranslation()
   const cardRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
@@ -182,6 +183,15 @@ export function EntityPopoverCard({ entity, anchorRect, onClose, onSendMessage, 
             >
               <MessageSquare className="w-3 h-3" />
               {t('entityPopover.sendMessage')}
+            </button>
+          )}
+          {onShareCard && (
+            <button
+              onClick={() => { onShareCard(entity); onClose() }}
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors cursor-pointer"
+            >
+              <Contact className="w-3 h-3" />
+              {t('entityPopover.shareCard')}
             </button>
           )}
           {onRemoveRelationship && (
