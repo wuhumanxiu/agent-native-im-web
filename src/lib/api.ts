@@ -4,6 +4,7 @@ import type {
   Task, ConversationMemory, ChangeRequest, EntitySelfCheck, EntityDiagnostics, FriendRequest, BotAccessLink, PublicBotProfile,
   NotificationRecord, InboxSnapshot, OnePassConfig, AuthMethods, ExternalIdentity,
   Attachment, FeedbackDetailResponse, FeedbackItem, FeedbackListResponse, FeedbackLevel, FeedbackStatus, FeedbackType,
+  LatestReleaseResponse, ReleaseListResponse,
 } from './types'
 import { getSessionHooks } from './auth-session'
 import { reportApiError } from './errors'
@@ -474,8 +475,31 @@ export const updateFeedbackAdmin = (token: string, id: number, data: {
   priority?: FeedbackLevel
   severity?: FeedbackLevel
   type?: FeedbackType
+  fixed_in_release_ids?: number[]
+  related_release_ids?: number[]
 }) =>
   request<FeedbackItem>('PATCH', `/api/v1/admin/feedback/${id}`, token, data)
+
+// Releases
+export const listReleases = (
+  token: string,
+  options?: { component?: string; platform?: string; channel?: string; limit?: number; offset?: number },
+) => {
+  const params = new URLSearchParams()
+  if (options?.component) params.set('component', options.component)
+  if (options?.platform) params.set('platform', options.platform)
+  if (options?.channel) params.set('channel', options.channel)
+  if (options?.limit) params.set('limit', String(options.limit))
+  if (options?.offset) params.set('offset', String(options.offset))
+  const qs = params.toString()
+  return request<ReleaseListResponse>('GET', `/api/v1/releases${qs ? `?${qs}` : ''}`, token)
+}
+
+export const getLatestRelease = (token: string, channel = 'production') =>
+  request<LatestReleaseResponse>('GET', `/api/v1/releases/latest?channel=${encodeURIComponent(channel)}`, token)
+
+export const markReleaseRead = (token: string, id: number) =>
+  request('POST', `/api/v1/releases/${id}/read`, token)
 
 // Push notifications (quiet — endpoint may not exist)
 export const getVapidKey = () =>

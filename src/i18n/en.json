@@ -376,6 +376,25 @@
     "pushDenied": "Permission denied by system",
     "pushUnsupported": "Push notifications are not available in this browser or app mode",
     "support": "Support",
+    "releases": "Release Notes",
+    "releasesTitle": "See what changed across ANI and connected agents",
+    "releasesDesc": "Release notes summarize product improvements, fixed feedback, known issues, and any required plugin or adapter upgrades.",
+    "releasesUnread": "{{count}} unread",
+    "releasesEmpty": "No releases yet",
+    "releasesLoadError": "Failed to load release notes",
+    "releasesSelectTitle": "Select a release to view details",
+    "releasesSelectDesc": "Each release includes user-facing changes, known issues, and required actions.",
+    "releaseRead": "Read",
+    "releaseActionRequired": "Action required",
+    "releaseKnownIssues": "Known issues",
+    "releaseOpenLink": "Open",
+    "releaseSection": {
+      "new": "New",
+      "improved": "Improved",
+      "fixed": "Fixed",
+      "security": "Security",
+      "known_issue": "Known issue"
+    },
     "feedback": "Feedback",
     "feedbackTitle": "Send product issues and requests to the platform team",
     "feedbackDesc": "Report bugs, product requests, account problems, or general questions. Admins can manage every item, while regular users only see their own submissions.",
@@ -410,6 +429,12 @@
     "feedbackInternalNote": "Admin only",
     "feedbackSendComment": "Send",
     "feedbackSupport": "Platform support",
+    "feedbackRelatedReleases": "Related releases",
+    "feedbackReleaseLink": {
+      "related": "Related",
+      "fixed": "Fixed in",
+      "known_issue": "Known issue"
+    },
     "feedbackType": {
       "bug": "Bug",
       "feature": "Feature",

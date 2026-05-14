@@ -214,7 +214,64 @@ export interface FeedbackListResponse {
 export interface FeedbackDetailResponse {
   item: FeedbackItem
   comments: FeedbackComment[]
+  releases?: FeedbackReleaseLink[]
   admin: boolean
+}
+
+export type ReleaseComponent = 'server' | 'web' | 'ios' | 'android' | 'openclaw_plugin' | 'hermes_adapter' | 'zebra_adapter' | 'sdk' | 'platform'
+export type ReleasePlatform = 'all' | 'web' | 'ios' | 'android' | 'desktop' | 'agent'
+export type ReleaseChannel = 'production' | 'preview' | 'development'
+export type ReleaseSectionKind = 'new' | 'improved' | 'fixed' | 'security' | 'known_issue' | string
+
+export interface ReleaseSection {
+  kind: ReleaseSectionKind
+  title: string
+  items: string[]
+}
+
+export interface ReleaseAction {
+  component: ReleaseComponent | string
+  title: string
+  body: string
+  url?: string
+}
+
+export interface ReleaseItem {
+  id: number
+  public_id: string
+  version: string
+  component: ReleaseComponent
+  platform: ReleasePlatform
+  channel: ReleaseChannel
+  title: string
+  summary: string
+  sections: ReleaseSection[]
+  required_actions: ReleaseAction[]
+  known_issues: string[]
+  published_at: string
+  created_at: string
+  read_at?: string
+}
+
+export interface ReleaseListResponse {
+  items: ReleaseItem[]
+  total: number
+  limit: number
+  offset: number
+  unread_count: number
+}
+
+export interface LatestReleaseResponse {
+  release: ReleaseItem
+  unread_count: number
+}
+
+export interface FeedbackReleaseLink {
+  feedback_id: number
+  release_id: number
+  link_type: 'related' | 'fixed' | 'known_issue'
+  created_at: string
+  release?: ReleaseItem
 }
 
 export interface ReactionSummary {

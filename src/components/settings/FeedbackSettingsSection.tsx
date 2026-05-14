@@ -364,6 +364,29 @@ export function FeedbackSettingsSection({ token, isMobile }: FeedbackSettingsSec
             </div>
           ) : null}
 
+          {detail.releases && detail.releases.length > 0 ? (
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] p-3">
+              <p className="mb-2 text-xs font-semibold text-[var(--color-text-secondary)]">{t('settings.feedbackRelatedReleases')}</p>
+              <div className="space-y-2">
+                {detail.releases.map((link) => (
+                  <div key={`${link.release_id}-${link.link_type}`} className="rounded-lg bg-[var(--color-bg-secondary)] px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
+                        {link.release?.version || `#${link.release_id}`}
+                      </p>
+                      <span className="rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[10px] text-[var(--color-accent)]">
+                        {t(`settings.feedbackReleaseLink.${link.link_type}`)}
+                      </span>
+                    </div>
+                    {link.release?.title ? (
+                      <p className="mt-1 line-clamp-2 text-xs text-[var(--color-text-muted)]">{link.release.title}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="space-y-3 border-t border-[var(--color-border)] pt-4">
             <p className="text-xs font-semibold text-[var(--color-text-secondary)]">{t('settings.feedbackComments')}</p>
             {detail.comments.length === 0 ? (
