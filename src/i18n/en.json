@@ -841,6 +841,8 @@
     "attachmentsRequireConnection": "Attachments and media uploads need a live connection. Text messages can queue and retry when service returns.",
     "botCapabilityBoundary": "{{name}} can receive {{kinds}}, but understanding them still depends on the bot's model and tools.",
     "botCapabilityLimited": "{{name}} is currently best with text. {{kinds}} can still be delivered, but it may not interpret them directly.",
+    "mentionHumans": "Human",
+    "mentionBots": "Bot",
     "kindImage": "images",
     "kindAudio": "audio",
     "kindVideo": "video",

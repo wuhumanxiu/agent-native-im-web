@@ -186,14 +186,30 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
   const mentionCandidates = useMemo(() => {
     if (!enableMentions || mentionQuery === null || !participants) return []
     const q = mentionQuery.toLowerCase()
-    return participants
+    const filtered = participants
       .filter((p) => p.entity)
       .filter((p) => {
         const name = p.entity!.name.toLowerCase()
         const display = (p.entity!.display_name || '').toLowerCase()
         return name.includes(q) || display.includes(q)
       })
+    const humans = filtered.filter((p) => p.entity?.entity_type === 'user')
+    const bots = filtered.filter((p) => p.entity?.entity_type !== 'user')
+    return [...humans, ...bots]
   }, [enableMentions, mentionQuery, participants])
+
+  const mentionGroups = useMemo(() => {
+    const humans = mentionCandidates.filter((p) => p.entity?.entity_type === 'user')
+    const bots = mentionCandidates.filter((p) => p.entity?.entity_type !== 'user')
+    const groups: Array<{ key: 'human' | 'bot'; label: string; candidates: Participant[]; startIndex: number }> = []
+    if (humans.length > 0) {
+      groups.push({ key: 'human', label: t('composer.mentionHumans'), candidates: humans, startIndex: 0 })
+    }
+    if (bots.length > 0) {
+      groups.push({ key: 'bot', label: t('composer.mentionBots'), candidates: bots, startIndex: humans.length })
+    }
+    return groups
+  }, [mentionCandidates, t])
 
   // Reset mention index when candidates change
   useEffect(() => {
@@ -452,33 +468,44 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
           ref={mentionRef}
           className="absolute bottom-full left-4 mb-1 w-max min-w-56 max-w-[calc(100vw-2rem)] max-h-52 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-xl shadow-black/20 z-20"
         >
-          {mentionCandidates.map((p, i) => (
-            <button
-              key={p.entity_id}
-              ref={(node) => { mentionOptionRefs.current[i] = node }}
-              onMouseDown={(e) => { e.preventDefault(); insertMention(p) }}
-              className={cn(
-                'w-full flex items-center gap-2.5 px-3 py-1.5 text-left transition-colors cursor-pointer',
-                i === mentionIndex
-                  ? 'bg-[var(--color-accent)]/10'
-                  : 'hover:bg-[var(--color-bg-hover)]',
-              )}
-            >
-              <EntityAvatar entity={p.entity} size="xs" />
-              <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                  {entityDisplayName(p.entity)}
-                </span>
-                <span className="text-[10px] text-[var(--color-text-muted)] truncate flex-shrink min-w-0">
-                  @{p.entity?.name}
-                </span>
-                {p.entity?.entity_type !== 'user' && (
-                  <span className="px-1 py-0.5 rounded bg-[var(--color-bot)]/15 text-[var(--color-bot)] text-[9px] flex-shrink-0">
-                    {p.entity?.entity_type}
-                  </span>
-                )}
+          {mentionGroups.map((group) => (
+            <div key={group.key}>
+              <div className="flex items-center gap-2 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                <span>{group.label}</span>
+                <span className="h-px flex-1 bg-[var(--color-border)]" />
               </div>
-            </button>
+              {group.candidates.map((p, groupIndex) => {
+                const i = group.startIndex + groupIndex
+                return (
+                  <button
+                    key={p.entity_id}
+                    ref={(node) => { mentionOptionRefs.current[i] = node }}
+                    onMouseDown={(e) => { e.preventDefault(); insertMention(p) }}
+                    className={cn(
+                      'w-full flex items-center gap-2.5 px-3 py-1.5 text-left transition-colors cursor-pointer',
+                      i === mentionIndex
+                        ? 'bg-[var(--color-accent)]/10'
+                        : 'hover:bg-[var(--color-bg-hover)]',
+                    )}
+                  >
+                    <EntityAvatar entity={p.entity} size="xs" />
+                    <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                        {entityDisplayName(p.entity)}
+                      </span>
+                      <span className="text-[10px] text-[var(--color-text-muted)] truncate flex-shrink min-w-0">
+                        @{p.entity?.name}
+                      </span>
+                      {p.entity?.entity_type !== 'user' && (
+                        <span className="px-1 py-0.5 rounded bg-[var(--color-bot)]/15 text-[var(--color-bot)] text-[9px] flex-shrink-0">
+                          {p.entity?.entity_type}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
           ))}
         </div>
       )}
