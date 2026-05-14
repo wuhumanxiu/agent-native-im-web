@@ -11,6 +11,9 @@ export interface OutboxMessage {
   content_type?: string
   text: string
   mentions?: number[]
+  mention_public_ids?: string[]
+  mention_refs?: import('./types').MentionRef[]
+  assigned_public_ids?: string[]
   reply_to?: number
   created_at: string
   attempts?: number

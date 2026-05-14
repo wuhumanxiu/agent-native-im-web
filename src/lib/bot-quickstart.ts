@@ -38,7 +38,7 @@ npx -y @wzfukui/openclaw-ani-installer doctor
 \`\`\`
 
 This is the recommended path for end users. Older OpenClaw releases can have compatibility issues when installing third-party scoped npm plugins directly.
-The installer tracks npm \`latest\` by default. Use \`--version 2026.5.12\` only when you need a reproducible or rollback-safe install.
+The installer tracks npm \`latest\` by default. Use \`--version 2026.5.14\` only when you need a reproducible or rollback-safe install.
 
 ## Enable ANI Plugin
 

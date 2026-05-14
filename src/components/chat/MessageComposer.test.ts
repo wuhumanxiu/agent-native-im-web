@@ -25,6 +25,7 @@ describe('composer draft helpers', () => {
         },
       },
       mentionIds: [2, 3],
+      assignedMentionIds: [2],
       pendingFiles: [
         {
           name: 'brief.md',
@@ -61,6 +62,7 @@ describe('composer draft helpers', () => {
         layers: { summary: 'Original reply target' },
       },
       mentionIds: [2, 3],
+      assignedMentionIds: [2],
       attachments: [
         {
           name: 'brief.md',
@@ -78,6 +80,7 @@ describe('composer draft helpers', () => {
       text: 'legacy raw draft',
       replyTo: null,
       mentionIds: [],
+      assignedMentionIds: [],
       attachments: [],
     })
   })

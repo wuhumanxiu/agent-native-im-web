@@ -9,7 +9,7 @@ import { useMessagesStore } from '@/store/messages'
 import { usePresenceStore } from '@/store/presence'
 import { useConversationsStore } from '@/store/conversations'
 import * as api from '@/lib/api'
-import type { Conversation, ActiveStream, Message, PresenceStateValue } from '@/lib/types'
+import type { Conversation, ActiveStream, Message, PresenceStateValue, MentionRef } from '@/lib/types'
 import { entityDisplayName, isBotOrService, cn } from '@/lib/utils'
 import { cacheMessages, getCachedMessages, enqueueOutboxMessage, getOutboxMessageByTempId, deleteOutboxMessage, updateOutboxMessage } from '@/lib/cache'
 import { DotsAnimation } from '@/components/ui/DotsAnimation'
@@ -86,6 +86,9 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
   const otherParticipant = conversation.participants?.find((p) => p.entity_id !== myEntity.id)?.entity
   const isGroup = conversation.conv_type === 'group' || conversation.conv_type === 'channel'
   const otherPresence: PresenceStateValue = otherParticipant ? getPresenceState(otherParticipant.id) : 'unknown'
+  const conversationPublicId = typeof conversation.metadata?.public_id === 'string'
+    ? conversation.metadata.public_id
+    : conversation.public_id
 
   // Check if current user is observer
   const myParticipant = conversation.participants?.find((p) => p.entity_id === myEntity.id)
@@ -126,6 +129,60 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
     const mentionedBots = botParticipants.filter((participant) => mentions.includes(participant.id))
     return mentionedBots.length === 1 ? mentionedBots[0] : null
   }, [isGroup, directBotParticipant, botParticipants])
+
+  const buildConversationRefPayload = useCallback(() => {
+    return conversationPublicId
+      ? { conversation_public_id: conversationPublicId }
+      : { conversation_id: conversation.id }
+  }, [conversation.id, conversationPublicId])
+
+  const buildMentionPayload = useCallback((mentions?: number[], assignedMentions?: number[]) => {
+    const uniqueMentionIds = Array.from(new Set((mentions || []).filter((id): id is number => typeof id === 'number')))
+    if (uniqueMentionIds.length === 0) return {}
+    const assignedMentionIds = Array.from(new Set(
+      (assignedMentions ?? uniqueMentionIds).filter((id): id is number => uniqueMentionIds.includes(id)),
+    ))
+
+    const mentionRefs: MentionRef[] = []
+    const mentionPublicIds: string[] = []
+    let missingPublicId = false
+
+    for (const id of uniqueMentionIds) {
+      const participant = conversation.participants?.find((item) => item.entity_id === id || item.entity?.id === id)
+      const entity = participant?.entity
+      const publicId = participant?.entity_public_id || entity?.public_id
+      if (!publicId) {
+        missingPublicId = true
+        continue
+      }
+      mentionPublicIds.push(publicId)
+      const handle = entity?.bot_id || entity?.name || publicId
+      mentionRefs.push({
+        public_id: publicId,
+        handle,
+        display_name: entity ? entityDisplayName(entity) : undefined,
+        entity_type: entity?.entity_type,
+        text: `@${entity ? entityDisplayName(entity) : handle}`,
+      })
+    }
+
+    if (missingPublicId || mentionPublicIds.length !== uniqueMentionIds.length) {
+      return { mentions: assignedMentions ? assignedMentionIds : uniqueMentionIds }
+    }
+
+    const assignedPublicIds = assignedMentionIds
+      .map((id) => {
+        const participant = conversation.participants?.find((item) => item.entity_id === id || item.entity?.id === id)
+        return participant?.entity_public_id || participant?.entity?.public_id
+      })
+      .filter((id): id is string => !!id)
+
+    return {
+      mention_public_ids: mentionPublicIds,
+      mention_refs: mentionRefs,
+      assigned_public_ids: assignedPublicIds,
+    }
+  }, [conversation.participants])
 
   // Active streams for this conversation
   const convStreams = useMemo<ActiveStream[]>(
@@ -378,7 +435,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
     return null
   }, [conversation.id, token])
 
-  const handleSend = useCallback(async (text: string, uploadedAttachments?: UploadedAttachment[], mentions?: number[]) => {
+  const handleSend = useCallback(async (text: string, uploadedAttachments?: UploadedAttachment[], mentions?: number[], assignedMentions?: number[]) => {
     // Capture reply target before clearing
     const currentReplyTo = replyTo
     setReplyTo(null)
@@ -390,12 +447,15 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
 
     const hasAttachments = uploadedAttachments && uploadedAttachments.length > 0
     const contentType = hasAttachments && uploadedAttachments.some((a) => a.type === 'image') ? 'image' : 'text'
+    const mentionPayload = buildMentionPayload(mentions, assignedMentions)
 
     // Create optimistic message with attachments (already uploaded)
     const optimisticMsg: Message = {
       id: -Math.floor(Math.random() * 1000000),
       conversation_id: conversation.id,
+      conversation_public_id: conversationPublicId,
       sender_id: myEntity.id,
+      sender_public_id: myEntity.public_id,
       sender_type: myEntity.entity_type,
       sender: myEntity,
       content_type: contentType,
@@ -406,6 +466,9 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
       created_at: new Date().toISOString(),
       attachments: hasAttachments ? uploadedAttachments : [],
       mentions,
+      mention_public_ids: 'mention_public_ids' in mentionPayload ? mentionPayload.mention_public_ids : undefined,
+      mention_refs: 'mention_refs' in mentionPayload ? mentionPayload.mention_refs : undefined,
+      assigned_public_ids: 'assigned_public_ids' in mentionPayload ? mentionPayload.assigned_public_ids : undefined,
       reply_to: currentReplyTo?.id,
     }
 
@@ -419,6 +482,9 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
         content_type: contentType,
         text,
         mentions,
+        mention_public_ids: 'mention_public_ids' in mentionPayload ? mentionPayload.mention_public_ids : undefined,
+        mention_refs: 'mention_refs' in mentionPayload ? mentionPayload.mention_refs : undefined,
+        assigned_public_ids: 'assigned_public_ids' in mentionPayload ? mentionPayload.assigned_public_ids : undefined,
         reply_to: currentReplyTo?.id,
         created_at: new Date().toISOString(),
         attempts: 0,
@@ -434,20 +500,20 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
 
     try {
       const res = await api.sendMessage(token, {
-        conversation_id: conversation.id,
+        ...buildConversationRefPayload(),
         content_type: contentType,
         layers: {
           summary: text,
           data: { body: text },
         },
         attachments: hasAttachments ? uploadedAttachments : undefined,
-        mentions,
+        ...mentionPayload,
         reply_to: currentReplyTo?.id,
       })
 
       if (res.ok && res.data) {
         replaceOptimisticMessage(tempId, res.data)
-        startBotThinking(resolveProcessingEntity(mentions))
+        startBotThinking(resolveProcessingEntity(assignedMentions ?? mentions))
       } else {
         if (hasAttachments) {
           removeOptimisticMessage(tempId, conversation.id)
@@ -462,7 +528,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
         await queueForOffline('failed')
       }
     }
-  }, [token, conversation.id, myEntity, replyTo, addOptimisticMessage, replaceOptimisticMessage, removeOptimisticMessage, setOptimisticState, startBotThinking, resolveProcessingEntity])
+  }, [token, conversation.id, conversationPublicId, myEntity, replyTo, addOptimisticMessage, replaceOptimisticMessage, removeOptimisticMessage, setOptimisticState, startBotThinking, resolveProcessingEntity, buildMentionPayload, buildConversationRefPayload])
 
   const handleRetryOutbox = useCallback(async (tempId: string) => {
     const item = await getOutboxMessageByTempId(tempId)
@@ -486,7 +552,10 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
         summary: item.text,
         data: { body: item.text },
       },
-      mentions: item.mentions,
+      mentions: item.mention_public_ids?.length ? undefined : item.mentions,
+      mention_public_ids: item.mention_public_ids,
+      mention_refs: item.mention_refs,
+      assigned_public_ids: item.assigned_public_ids,
       reply_to: item.reply_to,
     })
     if (res.ok && res.data) {
@@ -527,7 +596,9 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
     const optimisticMsg: Message = {
       id: -Math.floor(Math.random() * 1000000),
       conversation_id: conversation.id,
+      conversation_public_id: conversationPublicId,
       sender_id: myEntity.id,
+      sender_public_id: myEntity.public_id,
       sender_type: myEntity.entity_type,
       sender: myEntity,
       content_type: 'audio',
@@ -544,7 +615,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
         return
       }
       const res = await api.sendMessage(token, {
-        conversation_id: conversation.id,
+        ...buildConversationRefPayload(),
         content_type: 'audio',
         layers: { summary: `Voice message (${duration}s)` },
         attachments: [{
@@ -560,7 +631,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
     } catch {
       setOptimisticState(tempId, 'failed')
     }
-  }, [token, conversation.id, myEntity, addOptimisticMessage, replaceOptimisticMessage, setOptimisticState])
+  }, [token, conversation.id, conversationPublicId, myEntity, addOptimisticMessage, replaceOptimisticMessage, setOptimisticState, buildConversationRefPayload])
 
   // Interaction reply
   const handleInteractionReply = useCallback(async (msgId: number, choice: string, label: string) => {
@@ -573,7 +644,9 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
     addOptimisticMessage(tempId, {
       id: optimisticId,
       conversation_id: conversation.id,
+      conversation_public_id: conversationPublicId,
       sender_id: myEntity.id,
+      sender_public_id: myEntity.public_id,
       sender: myEntity,
       content_type: 'text',
       layers: {
@@ -585,7 +658,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
     })
 
     const res = await api.sendMessage(token, {
-      conversation_id: conversation.id,
+      ...buildConversationRefPayload(),
       content_type: 'text',
       layers: {
         summary: label,
@@ -599,7 +672,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
       return
     }
     setOptimisticState(tempId, 'failed')
-  }, [token, conversation.id, messages, myEntity, addOptimisticMessage, replaceOptimisticMessage, setOptimisticState, startBotThinking])
+  }, [token, conversation.id, conversationPublicId, messages, myEntity, addOptimisticMessage, replaceOptimisticMessage, setOptimisticState, startBotThinking, buildConversationRefPayload])
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault()

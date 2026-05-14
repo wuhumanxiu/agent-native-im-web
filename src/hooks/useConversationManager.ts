@@ -113,7 +113,10 @@ export function useConversationManager() {
               summary: item.text.length > 100 ? item.text.slice(0, 100) + '...' : item.text,
               data: { body: item.text },
             },
-            mentions: item.mentions,
+            mentions: item.mention_public_ids?.length ? undefined : item.mentions,
+            mention_public_ids: item.mention_public_ids,
+            mention_refs: item.mention_refs,
+            assigned_public_ids: item.assigned_public_ids,
             reply_to: item.reply_to,
           })
           if (res.ok && res.data) {
@@ -174,7 +177,10 @@ export function useConversationManager() {
           summary: item.text.length > 100 ? item.text.slice(0, 100) + '...' : item.text,
           data: { body: item.text },
         },
-        mentions: item.mentions,
+        mentions: item.mention_public_ids?.length ? undefined : item.mentions,
+        mention_public_ids: item.mention_public_ids,
+        mention_refs: item.mention_refs,
+        assigned_public_ids: item.assigned_public_ids,
         reply_to: item.reply_to,
       })
       if (res.ok && res.data) {

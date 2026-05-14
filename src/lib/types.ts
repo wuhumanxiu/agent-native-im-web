@@ -227,7 +227,9 @@ export interface ReactionSummary {
 export interface Message {
   id: number
   conversation_id: number
+  conversation_public_id?: string
   sender_id: number
+  sender_public_id?: string
   temp_id?: string
   client_state?: 'sending' | 'sent' | 'queued' | 'failed'
   sender_type?: string
@@ -237,10 +239,21 @@ export interface Message {
   layers: MessageLayers
   attachments?: Attachment[]
   mentions?: number[]
+  mention_public_ids?: string[]
+  mention_refs?: MentionRef[]
+  assigned_public_ids?: string[]
   reply_to?: number
   reactions?: ReactionSummary[]
   revoked_at?: string
   created_at: string
+}
+
+export interface MentionRef {
+  public_id?: string
+  handle?: string
+  display_name?: string
+  entity_type?: EntityType
+  text?: string
 }
 
 export interface EntitySelfCheck {

@@ -24,7 +24,7 @@ export type UploadedAttachment = Required<Pick<Attachment, 'type' | 'url' | 'fil
 
 interface Props {
   conversationId?: number
-  onSend: (text: string, attachments?: UploadedAttachment[], mentions?: number[]) => void
+  onSend: (text: string, attachments?: UploadedAttachment[], mentions?: number[], assignedMentions?: number[]) => void
   onAudioSend?: (blob: Blob, duration: number) => void
   onFileUpload?: (file: File) => Promise<string | null>
   onTyping?: () => void
@@ -49,6 +49,7 @@ interface ComposerDraftPayload {
   text: string
   replyTo: DraftReplyPreview | null
   mentionIds: number[]
+  assignedMentionIds: number[]
   attachments: PendingFile[]
 }
 
@@ -67,6 +68,7 @@ export function serializeComposerDraft(params: {
   text: string
   replyTo?: Message | null
   mentionIds: number[]
+  assignedMentionIds?: number[]
   pendingFiles: PendingFile[]
 }): string | null {
   const text = params.text.trim()
@@ -74,10 +76,12 @@ export function serializeComposerDraft(params: {
     .map(toDraftAttachment)
     .filter((item): item is PendingFile => !!item)
   if (!text && !params.replyTo && params.mentionIds.length === 0 && attachments.length === 0) return null
+  const assignedMentionIds = params.assignedMentionIds ?? params.mentionIds
   const payload: ComposerDraftPayload = {
     text,
     replyTo: params.replyTo ? { id: params.replyTo.id, sender: params.replyTo.sender, layers: params.replyTo.layers } : null,
     mentionIds: [...params.mentionIds],
+    assignedMentionIds: assignedMentionIds.filter((id) => params.mentionIds.includes(id)),
     attachments,
   }
   return JSON.stringify(payload)
@@ -93,6 +97,11 @@ export function parseComposerDraft(raw: string | null): ComposerDraftPayload | n
       mentionIds: Array.isArray(parsed.mentionIds)
         ? parsed.mentionIds.filter((id): id is number => typeof id === 'number')
         : [],
+      assignedMentionIds: Array.isArray(parsed.assignedMentionIds)
+        ? parsed.assignedMentionIds.filter((id): id is number => typeof id === 'number')
+        : Array.isArray(parsed.mentionIds)
+          ? parsed.mentionIds.filter((id): id is number => typeof id === 'number')
+          : [],
       attachments: Array.isArray(parsed.attachments)
         ? parsed.attachments
           .filter((item): item is PendingFile => !!item && typeof item.name === 'string')
@@ -110,6 +119,7 @@ export function parseComposerDraft(raw: string | null): ComposerDraftPayload | n
       text: raw,
       replyTo: null,
       mentionIds: [],
+      assignedMentionIds: [],
       attachments: [],
     }
   }
@@ -120,6 +130,7 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
   const [text, setText] = useState('')
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([])
   const [mentionIds, setMentionIds] = useState<number[]>([])
+  const [assignedMentionIds, setAssignedMentionIds] = useState<number[]>([])
   const { state: recState, duration: recDuration, start: recStart, stop: recStop, cancel: recCancel } = useAudioRecorder()
   const prevConvIdRef = useRef<number | undefined>(undefined)
 
@@ -132,6 +143,7 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
         text,
         replyTo,
         mentionIds,
+        assignedMentionIds,
         pendingFiles,
       })
       if (serialized) {
@@ -145,10 +157,12 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
     if (draft) {
       setText(draft.text || '')
       setMentionIds(draft.mentionIds || [])
+      setAssignedMentionIds((draft.assignedMentionIds || []).filter((id) => (draft.mentionIds || []).includes(id)))
       setPendingFiles(draft.attachments || [])
     } else {
       setText('')
       setMentionIds([])
+      setAssignedMentionIds([])
       setPendingFiles([])
     }
     prevConvIdRef.current = conversationId
@@ -210,6 +224,7 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
     const newText = `${before}@${displayName} ${after}`
     setText(newText)
     setMentionIds((prev) => prev.includes(participant.entity_id) ? prev : [...prev, participant.entity_id])
+    setAssignedMentionIds((prev) => prev.includes(participant.entity_id) ? prev : [...prev, participant.entity_id])
     setMentionQuery(null)
     setMentionStart(-1)
     // Focus and set cursor after inserted mention
@@ -277,14 +292,18 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
       trimmed,
       uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
       enableMentions && mentionIds.length > 0 ? mentionIds : undefined,
+      enableMentions && mentionIds.length > 0
+        ? assignedMentionIds.filter((id) => mentionIds.includes(id))
+        : undefined,
     )
     setText('')
     setPendingFiles([])
     setMentionIds([])
+    setAssignedMentionIds([])
     setMentionQuery(null)
     if (conversationId) localStorage.removeItem(`draft:${conversationId}`)
     textareaRef.current?.focus()
-  }, [text, uploadedAttachments, hasUploading, mentionIds, onSend, conversationId, enableMentions])
+  }, [text, uploadedAttachments, hasUploading, mentionIds, assignedMentionIds, onSend, conversationId, enableMentions])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Handle mention autocomplete navigation
@@ -517,12 +536,36 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
         <div className="flex gap-1.5 mb-2 flex-wrap">
           {mentionIds.map((eid) => {
             const p = participants.find((pp) => pp.entity_id === eid)
+            const assigned = assignedMentionIds.includes(eid)
             return (
-              <span key={eid} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-[11px] font-medium">
-                @{entityDisplayName(p?.entity)}
+              <span
+                key={eid}
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                  assigned
+                    ? 'border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
+                    : 'border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]',
+                )}
+              >
                 <button
-                  onClick={() => setMentionIds((prev) => prev.filter((id) => id !== eid))}
+                  type="button"
+                  onClick={() => {
+                    setAssignedMentionIds((prev) => assigned ? prev.filter((id) => id !== eid) : [...prev, eid])
+                  }}
+                  className="cursor-pointer"
+                  title={assigned ? '点击改为仅通知' : '点击改为派活'}
+                >
+                  @{entityDisplayName(p?.entity)}
+                  <span className="ml-1 opacity-70">{assigned ? '派活' : '仅通知'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMentionIds((prev) => prev.filter((id) => id !== eid))
+                    setAssignedMentionIds((prev) => prev.filter((id) => id !== eid))
+                  }}
                   className="hover:text-[var(--color-error)] cursor-pointer"
+                  title="移除 @"
                 >
                   <X className="w-2.5 h-2.5" />
                 </button>
