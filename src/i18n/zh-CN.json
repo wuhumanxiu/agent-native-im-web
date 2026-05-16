@@ -781,9 +781,9 @@
     "disabled": "已停用",
     "pending": "待审批",
     "joined": "加入于",
-    "sendMessage": "发消息",
-    "shareCard": "分享名片",
-    "viewDetails": "查看详情"
+    "sendMessage": "消息",
+    "shareCard": "分享",
+    "viewDetails": "详情"
   },
   "entityCard": {
     "sharedCard": "个人名片",

@@ -840,12 +840,12 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
             )}
           </div>
 
-          <div className="mt-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-4">
+          <div className="mt-5 rounded-2xl border border-[var(--color-accent)]/20 bg-[var(--color-bg-tertiary)] p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <Link className="w-4 h-4 text-[var(--color-accent)]" />
               <p className="text-sm font-medium text-[var(--color-text-primary)]">{t('friends.botAccessPolicy')}</p>
             </div>
-            <div className="grid gap-3">
+            <div className="grid gap-3 xl:grid-cols-3 xl:items-start">
               <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-3">
                 <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)] mb-2">{t('friends.platformVisibility')}</p>
                 <label className="block text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)] mb-1.5">
@@ -912,7 +912,7 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
                 )}
               </div>
               {policyDraft.discoverability === 'external_public' && policyDraft.require_access_password && (
-                <div>
+                <div className="xl:col-span-3">
                   <label className="block text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)] mb-1.5">
                     {t('friends.accessPassword')}
                   </label>
@@ -927,7 +927,7 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
                 </div>
               )}
               {policyDraft.discoverability === 'external_public' && (
-                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-3">
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-3 xl:col-span-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium text-[var(--color-text-primary)]">{t('friends.publicBotUrl')}</p>
@@ -943,14 +943,14 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
                 <button
                   onClick={handleSavePolicy}
                   disabled={savingPolicy}
-                  className="h-10 rounded-xl bg-[var(--color-accent)] text-white text-sm font-medium cursor-pointer inline-flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="h-10 rounded-xl bg-[var(--color-accent)] text-white text-sm font-medium cursor-pointer inline-flex items-center justify-center gap-2 disabled:opacity-50 xl:col-span-3"
                 >
                   {savingPolicy ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   {t('common.save')}
                 </button>
               )}
               {isOwner && !isDisabled && policyDraft.discoverability === 'external_public' && (
-                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-3">
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-3 xl:col-span-3">
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <div>
                       <p className="text-sm font-medium text-[var(--color-text-primary)]">{t('friends.publicAccessLinks')}</p>

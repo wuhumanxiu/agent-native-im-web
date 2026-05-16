@@ -781,8 +781,8 @@
     "disabled": "Disabled",
     "pending": "Pending",
     "joined": "Joined",
-    "sendMessage": "Message",
-    "shareCard": "Share card",
+    "sendMessage": "Chat",
+    "shareCard": "Share",
     "viewDetails": "Details"
   },
   "entityCard": {

@@ -20,6 +20,17 @@ interface Props {
   refreshTrigger?: number
 }
 
+function botStableSortKey(entity: Entity): string {
+  return [
+    entity.id.toString().padStart(12, '0'),
+    entity.display_name || entity.name || entity.bot_id || entity.public_id || '',
+  ].join(':')
+}
+
+export function compareBotsStable(a: Entity, b: Entity): number {
+  return botStableSortKey(a).localeCompare(botStableSortKey(b))
+}
+
 export function BotList({ selectedId, onSelect, onCreated, refreshTrigger }: Props) {
   const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)!
@@ -82,13 +93,6 @@ export function BotList({ selectedId, onSelect, onCreated, refreshTrigger }: Pro
     }
   }, [entities.length, fetchPresence, setPresenceBatch, token])
 
-  const rankPresence = useCallback((entity: Entity) => {
-    const presence = getPresenceState(entity.id)
-    if (presence === 'online') return 0
-    if (presence === 'unknown') return 1
-    return 2
-  }, [getPresenceState])
-
   // Stale-while-revalidate: show cached entities instantly, then refresh from network
   useEffect(() => {
     let cancelled = false
@@ -132,11 +136,13 @@ export function BotList({ selectedId, onSelect, onCreated, refreshTrigger }: Pro
       )
     : bots
 
-  // Split into active and disabled groups, online bots sorted first
+  // Keep list order stable while presence refreshes; online state only updates badges.
   const activeBots = filtered
     .filter((e) => e.status !== 'disabled')
-    .sort((a, b) => rankPresence(a) - rankPresence(b))
-  const disabledBots = filtered.filter((e) => e.status === 'disabled')
+    .sort(compareBotsStable)
+  const disabledBots = filtered
+    .filter((e) => e.status === 'disabled')
+    .sort(compareBotsStable)
 
   const renderBotItem = (entity: Entity) => {
     const presence: PresenceStateValue = getPresenceState(entity.id)
