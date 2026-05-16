@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useParams } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth'
 import { useSettingsStore, type Theme, type Locale } from '@/store/settings'
 import { AvatarPicker } from '@/components/entity/AvatarPicker'
@@ -28,6 +29,7 @@ interface Props {
 
 export function UserSettingsPage({ onBack }: Props) {
   const { t, i18n } = useTranslation()
+  const { section: routeSection } = useParams<{ section?: string }>()
   const entity = useAuthStore((s) => s.entity)
   const token = useAuthStore((s) => s.token)!
   const setAuth = useAuthStore((s) => s.setAuth)
@@ -58,6 +60,13 @@ export function UserSettingsPage({ onBack }: Props) {
   const [copiedProfileField, setCopiedProfileField] = useState<'public' | null>(null)
   const [pushEnabled, setPushEnabled] = useState(false)
   const [pushLoading, setPushLoading] = useState(false)
+
+  useEffect(() => {
+    const allowed: Section[] = ['profile', 'security', 'devices', 'theme', 'language', 'releases', 'feedback', 'about']
+    if (routeSection && allowed.includes(routeSection as Section)) {
+      setSection(routeSection as Section)
+    }
+  }, [routeSection])
   const [pushStatus, setPushStatus] = useState('')
   const { canInstall, isInstalled, promptInstall } = usePwaInstall()
   const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)

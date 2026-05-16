@@ -8,6 +8,11 @@ import * as api from '@/lib/api'
 import type { Entity, NotificationRecord } from '@/lib/types'
 import { EntityAvatar } from '@/components/entity/EntityAvatar'
 import { cn, entityDisplayName } from '@/lib/utils'
+import {
+  localizedReleaseNotificationBody,
+  localizedReleaseNotificationTitle,
+  releaseNotificationPath,
+} from '@/lib/localized-release'
 
 type Scope = 'all' | string
 type Filter = 'all' | 'unread'
@@ -43,7 +48,7 @@ function notificationConversationPath(notification: NotificationRecord): string 
   return null
 }
 
-function notificationLabel(t: (key: string, options?: Record<string, unknown>) => string, notification: NotificationRecord): string {
+function notificationLabel(t: (key: string, options?: Record<string, unknown>) => string, notification: NotificationRecord, language: string): string {
   const actor = notification.actor_entity ? entityDisplayName(notification.actor_entity) : t('inbox.someone')
   switch (notification.kind) {
     case 'friend.request.received':
@@ -66,13 +71,22 @@ function notificationLabel(t: (key: string, options?: Record<string, unknown>) =
       return t('inbox.taskHandover', { actor })
     case 'public.bot_session_created':
       return t('inbox.publicBotSessionCreated')
+    case 'release.published':
+      return localizedReleaseNotificationTitle(notification, language, t('inbox.releasePublished'))
     default:
       return notification.title || t('inbox.generic')
   }
 }
 
+function notificationBody(t: (key: string, options?: Record<string, unknown>) => string, notification: NotificationRecord, language: string): string {
+  if (notification.kind === 'release.published') {
+    return localizedReleaseNotificationBody(notification, language, t('inbox.releasePublishedDesc'))
+  }
+  return notification.body || notificationLabel(t, notification, language)
+}
+
 export function InboxPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const token = useAuthStore((s) => s.token)!
   const me = useAuthStore((s) => s.entity)!
@@ -224,7 +238,9 @@ export function InboxPage() {
             {visibleNotifications.map((notification) => {
               const isUnread = notification.status === 'unread'
               const isPendingRequest = notification.kind === 'friend.request.received'
+              const isReleaseNotification = notification.kind === 'release.published'
               const conversationPath = notificationConversationPath(notification)
+              const releasePath = isReleaseNotification ? releaseNotificationPath(notification) : ''
               const actor = notification.actor_entity
               const recipient = notification.recipient_entity
               return (
@@ -243,7 +259,7 @@ export function InboxPage() {
                     isUnread && 'border-[var(--color-accent)]/20',
                   )}>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-[var(--color-text-primary)]">{notificationLabel(t, notification)}</span>
+                      <span className="text-sm font-medium text-[var(--color-text-primary)]">{notificationLabel(t, notification, i18n.language)}</span>
                       {isUnread && <span className="h-2 w-2 rounded-full bg-[var(--color-accent)]" />}
                       {recipient && scope === 'all' && (
                         <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-[var(--color-bg-primary)] text-[var(--color-text-muted)] border border-[var(--color-border)]">
@@ -251,7 +267,7 @@ export function InboxPage() {
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{notification.body || notificationLabel(t, notification)}</p>
+                    <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{notificationBody(t, notification, i18n.language)}</p>
                     <p className="mt-2 text-xs text-[var(--color-text-muted)]">{new Date(notification.created_at).toLocaleString()}</p>
 
                     <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -301,6 +317,16 @@ export function InboxPage() {
                         >
                           <MessageCircleMore className="w-3.5 h-3.5" />
                           {t('inbox.openConversation')}
+                        </button>
+                      )}
+
+                      {releasePath && (
+                        <button
+                          onClick={() => navigate(releasePath)}
+                          className="h-9 px-3 rounded-xl border border-[var(--color-border)] text-xs font-medium text-[var(--color-text-primary)] cursor-pointer inline-flex items-center gap-1.5"
+                        >
+                          <MessageCircleMore className="w-3.5 h-3.5" />
+                          {t('inbox.openRelease')}
                         </button>
                       )}
                     </div>

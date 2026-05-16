@@ -4,6 +4,7 @@ import { BellDot, Check, ExternalLink, Loader2, Megaphone, RefreshCw } from 'luc
 import * as api from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
 import { cn } from '@/lib/utils'
+import { localizeRelease } from '@/lib/localized-release'
 import type { ReleaseItem, ReleaseSectionKind } from '@/lib/types'
 
 interface ReleaseSettingsSectionProps {
@@ -24,7 +25,7 @@ function sectionTone(kind: ReleaseSectionKind) {
 }
 
 export function ReleaseSettingsSection({ token, isMobile }: ReleaseSettingsSectionProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [items, setItems] = useState<ReleaseItem[]>([])
   const [selected, setSelected] = useState<ReleaseItem | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -62,6 +63,9 @@ export function ReleaseSettingsSection({ token, isMobile }: ReleaseSettingsSecti
     }
   }
 
+  const localizedItems = items.map((item) => localizeRelease(item, i18n.language))
+  const localizedSelected = selected ? localizeRelease(selected, i18n.language) : null
+
   const list = (
     <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3">
@@ -87,7 +91,7 @@ export function ReleaseSettingsSection({ token, isMobile }: ReleaseSettingsSecti
         <div className="px-4 py-8 text-center text-xs text-[var(--color-text-muted)]">{t('settings.releasesEmpty')}</div>
       ) : (
         <div className="max-h-[560px] overflow-y-auto">
-          {items.map((item) => (
+          {localizedItems.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -117,7 +121,7 @@ export function ReleaseSettingsSection({ token, isMobile }: ReleaseSettingsSecti
 
   const detail = (
     <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4">
-      {!selected ? (
+      {!localizedSelected ? (
         <div className="flex min-h-48 flex-col items-center justify-center text-center">
           <Megaphone className="mb-3 h-9 w-9 text-[var(--color-accent)]/70" />
           <p className="text-sm font-medium text-[var(--color-text-primary)]">{t('settings.releasesSelectTitle')}</p>
@@ -127,20 +131,20 @@ export function ReleaseSettingsSection({ token, isMobile }: ReleaseSettingsSecti
         <div className="space-y-5">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-[var(--color-accent)]/10 px-2.5 py-1 text-[11px] font-medium text-[var(--color-accent)]">{selected.component}</span>
-              <span className="rounded-full bg-[var(--color-bg-hover)] px-2.5 py-1 text-[11px] text-[var(--color-text-muted)]">{formatReleaseDate(selected.published_at)}</span>
-              {selected.read_at ? (
+              <span className="rounded-full bg-[var(--color-accent)]/10 px-2.5 py-1 text-[11px] font-medium text-[var(--color-accent)]">{localizedSelected.component}</span>
+              <span className="rounded-full bg-[var(--color-bg-hover)] px-2.5 py-1 text-[11px] text-[var(--color-text-muted)]">{formatReleaseDate(localizedSelected.published_at)}</span>
+              {localizedSelected.read_at ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-success)]/10 px-2.5 py-1 text-[11px] text-[var(--color-success)]">
                   <Check className="h-3 w-3" />
                   {t('settings.releaseRead')}
                 </span>
               ) : null}
             </div>
-            <h3 className="mt-3 text-xl font-semibold text-[var(--color-text-primary)]">{selected.title}</h3>
-            <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">{selected.summary}</p>
+            <h3 className="mt-3 text-xl font-semibold text-[var(--color-text-primary)]">{localizedSelected.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">{localizedSelected.summary}</p>
           </div>
 
-          {selected.sections.map((section, index) => (
+          {localizedSelected.sections.map((section, index) => (
             <section key={`${section.kind}-${index}`} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] p-3">
               <div className="mb-2 flex items-center gap-2">
                 <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide', sectionTone(section.kind))}>
@@ -159,11 +163,11 @@ export function ReleaseSettingsSection({ token, isMobile }: ReleaseSettingsSecti
             </section>
           ))}
 
-          {selected.required_actions.length > 0 ? (
+          {localizedSelected.required_actions.length > 0 ? (
             <section className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
               <p className="mb-2 text-xs font-semibold text-amber-700">{t('settings.releaseActionRequired')}</p>
               <div className="space-y-2">
-                {selected.required_actions.map((action) => (
+                {localizedSelected.required_actions.map((action) => (
                   <div key={`${action.component}-${action.title}`} className="rounded-lg bg-[var(--color-bg-secondary)]/80 p-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold text-[var(--color-text-primary)]">{action.title}</p>
@@ -181,11 +185,11 @@ export function ReleaseSettingsSection({ token, isMobile }: ReleaseSettingsSecti
             </section>
           ) : null}
 
-          {selected.known_issues.length > 0 ? (
+          {localizedSelected.known_issues.length > 0 ? (
             <section className="rounded-xl border border-[var(--color-border)] p-3">
               <p className="mb-2 text-xs font-semibold text-[var(--color-text-secondary)]">{t('settings.releaseKnownIssues')}</p>
               <ul className="space-y-1.5">
-                {selected.known_issues.map((issue) => (
+                {localizedSelected.known_issues.map((issue) => (
                   <li key={issue} className="text-xs leading-5 text-[var(--color-text-muted)]">{issue}</li>
                 ))}
               </ul>

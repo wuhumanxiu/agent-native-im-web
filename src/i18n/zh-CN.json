@@ -209,8 +209,11 @@
     "changeRejected": "{{actor}} 已拒绝你的会话变更请求",
     "taskHandover": "{{actor}} 向你移交了工作",
     "publicBotSessionCreated": "有访客发起了公开 Bot 会话",
+    "releasePublished": "ANI 发布了新的更新说明",
+    "releasePublishedDesc": "查看本次产品改进、已修复反馈、已知问题和需要执行的插件或适配器升级操作。",
     "friendsNowVisible": "双方现在都会出现在好友列表中",
-    "openConversation": "打开会话"
+    "openConversation": "打开会话",
+    "openRelease": "查看更新"
   },
   "conversation": {
     "messages": "消息",

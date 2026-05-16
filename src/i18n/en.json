@@ -209,8 +209,11 @@
     "changeRejected": "{{actor}} rejected your conversation change",
     "taskHandover": "{{actor}} handed over work to you",
     "publicBotSessionCreated": "A visitor started a public bot session",
+    "releasePublished": "ANI published new release notes",
+    "releasePublishedDesc": "Review product improvements, fixed feedback, known issues, and required plugin or adapter upgrades.",
     "friendsNowVisible": "You can now find each other in Friends",
-    "openConversation": "Open conversation"
+    "openConversation": "Open conversation",
+    "openRelease": "View update"
   },
   "conversation": {
     "messages": "Messages",

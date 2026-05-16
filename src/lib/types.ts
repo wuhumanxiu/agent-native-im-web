@@ -63,6 +63,15 @@ export interface NotificationRecord {
   actor_entity?: Entity
 }
 
+export interface NotificationReleasePayload {
+  release_id?: number
+  release_public_id?: string
+  version?: string
+  path?: string
+  title_i18n?: Record<string, string>
+  body_i18n?: Record<string, string>
+}
+
 export interface InboxSnapshot {
   tracked_entity_ids: number[]
   acting_entities: Entity[]
@@ -261,6 +270,11 @@ export interface ReleaseItem {
   sections: ReleaseSection[]
   required_actions: ReleaseAction[]
   known_issues: string[]
+  title_i18n?: Record<string, string>
+  summary_i18n?: Record<string, string>
+  sections_i18n?: Record<string, ReleaseSection[]>
+  required_actions_i18n?: Record<string, ReleaseAction[]>
+  known_issues_i18n?: Record<string, string[]>
   published_at: string
   created_at: string
   read_at?: string
