@@ -114,20 +114,7 @@ export function ConversationItem({ conv, active, myEntityId, onClick, onUpdate, 
   const otherParticipant = conv.participants?.find((p) => p.entity_id !== myEntityId)?.entity
   const displayEntity = isGroup ? null : otherParticipant
   const title = conv.title || entityDisplayName(otherParticipant)
-  const participants = conv.participants || []
-  const botParticipantCount = participants.filter((p) => isBotOrService(p.entity)).length
-  const humanParticipantCount = participants.filter((p) => p.entity && !isBotOrService(p.entity)).length
   const directIsBot = !isGroup && !!otherParticipant && isBotOrService(otherParticipant)
-  const chatKind = isGroup
-    ? botParticipantCount > 0 && humanParticipantCount > 0
-      ? 'mixed'
-      : botParticipantCount > 0
-        ? 'agent'
-        : 'human'
-    : directIsBot
-      ? 'bot'
-      : 'human'
-  const hasBotParticipant = chatKind !== 'human'
   const lastMsg = conv.last_message
   const lastText = lastMsg?.layers?.summary || (lastMsg?.content_type === 'image' ? '[Image]' : lastMsg?.content_type === 'file' ? '[File]' : lastMsg?.content_type === 'audio' ? '[Audio]' : '')
   const hasUnread = !muted && (conv.unread_count || 0) > 0
@@ -163,13 +150,6 @@ export function ConversationItem({ conv, active, myEntityId, onClick, onUpdate, 
             <div className="w-10 h-10 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-border)] flex items-center justify-center">
               <MessagesSquare className="w-4.5 h-4.5 text-[var(--color-accent)]" />
             </div>
-            {conv.participants?.some((p) => isBotOrService(p.entity)) && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--color-bot)] border-2 border-[var(--color-bg-secondary)] flex items-center justify-center">
-                <span className="text-[7px] text-white font-bold">
-                  {conv.participants.filter((p) => isBotOrService(p.entity)).length}
-                </span>
-              </div>
-            )}
           </div>
         ) : (
           <div className="self-start">
@@ -220,9 +200,9 @@ export function ConversationItem({ conv, active, myEntityId, onClick, onUpdate, 
                 {muted && <VolumeX className="w-3 h-3 text-[var(--color-text-muted)] flex-shrink-0" />}
               </span>
             )}
-            {!isEditing && hasBotParticipant && (
+            {!isEditing && directIsBot && (
               <span
-                className="hidden sm:inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-bot)]/10 text-[var(--color-bot)] ring-1 ring-[var(--color-bot)]/20 flex-shrink-0"
+                className="hidden sm:inline-flex h-5 w-4 items-center justify-center text-[var(--color-bot)] flex-shrink-0"
                 title={t('conversation.chatKindBot')}
                 aria-label={t('conversation.chatKindBot')}
               >
