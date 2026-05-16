@@ -465,7 +465,8 @@
       "in_progress": "In progress",
       "resolved": "Resolved",
       "closed": "Closed"
-    }
+    },
+    "advancedSettings": "Advanced settings"
   },
   "message": {
     "revoked": "{{name}} revoked a message",

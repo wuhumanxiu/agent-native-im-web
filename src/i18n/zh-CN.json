@@ -465,7 +465,8 @@
       "in_progress": "处理中",
       "resolved": "已解决",
       "closed": "已关闭"
-    }
+    },
+    "advancedSettings": "高级设置"
   },
   "message": {
     "revoked": "{{name}} 撤回了一条消息",

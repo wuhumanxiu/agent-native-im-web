@@ -16,6 +16,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
   X, UserMinus, UserPlus, Bell, BellOff, Crown, Shield, Eye,
   Pencil, Check, LogOut, Archive, VolumeX, Volume2, Loader2, Copy, ArrowLeft, Search, Bot, UserRound,
+  ChevronDown, Settings2,
 } from 'lucide-react'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
@@ -47,13 +48,15 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
   const [idCopied, setIdCopied] = useState(false)
   const [idCopyError, setIdCopyError] = useState<string | null>(null)
   const [showAddMember, setShowAddMember] = useState(false)
+  const [showAllMembers, setShowAllMembers] = useState(false)
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
   const [addableEntities, setAddableEntities] = useState<Entity[]>([])
   const [addMemberSearch, setAddMemberSearch] = useState('')
   const [addMemberLoading, setAddMemberLoading] = useState(false)
   const publicId = (conversation.metadata as Record<string, unknown> | undefined)?.public_id
   const displayConversationId = (typeof publicId === 'string' && publicId) || conversation.public_id || ''
 
-  const participants = conversation.participants || []
+  const participants = useMemo(() => conversation.participants || [], [conversation.participants])
   const memberSections = useMemo(() => buildGroupMemberSections(participants), [participants])
   const myParticipant = participants.find((p) => p.entity_id === myEntity.id)
   const canManage = myParticipant?.role === 'owner' || myParticipant?.role === 'admin'
@@ -161,6 +164,7 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
   }
 
   const ownerName = (entity?: Entity) => entity?.owner_display_name || entity?.owner_name || ''
+  const previewParticipants = participants.length > 15 ? participants.slice(0, 14) : participants.slice(0, 15)
 
   const renderMemberRow = (p: Participant, options?: { nested?: boolean; orphanBot?: boolean }) => {
     const nested = Boolean(options?.nested)
@@ -229,6 +233,31 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
     )
   }
 
+  const renderMemberTile = (p: Participant) => {
+    const isBot = isBotOrService(p.entity)
+    return (
+      <button
+        key={p.entity_id}
+        type="button"
+        onClick={() => setShowAllMembers(true)}
+        className="min-w-0 rounded-xl px-1.5 py-2 text-center hover:bg-[var(--color-bg-hover)] transition-colors"
+      >
+        <div className="relative mx-auto w-fit">
+          <EntityAvatar entity={p.entity} size="sm" />
+          {online.has(p.entity_id) && (
+            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[var(--color-success)] border-2 border-[var(--color-bg-secondary)]" />
+          )}
+          {isBot && (
+            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[var(--color-bot)]/15 border border-[var(--color-border)] flex items-center justify-center">
+              <Bot className="w-2.5 h-2.5 text-[var(--color-bot)]" />
+            </div>
+          )}
+        </div>
+        <p className="mt-1 truncate text-[10px] text-[var(--color-text-secondary)]">{entityDisplayName(p.entity)}</p>
+      </button>
+    )
+  }
+
   return (
     <div className={cn(
       'border-l border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex flex-col h-full overflow-hidden flex-shrink-0',
@@ -254,6 +283,122 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {/* Members: primary group settings content */}
+        {isGroup && (
+          <div className="px-4 py-4 border-b border-[var(--color-border)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <label className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
+                  {t('settings.members')} ({participants.length})
+                </label>
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">{t('conversation.participants', { count: participants.length })}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAllMembers((value) => !value)}
+                className="text-[11px] font-medium text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] cursor-pointer"
+              >
+                {showAllMembers ? t('common.hideDetails') : t('common.showDetails')}
+              </button>
+            </div>
+
+            <div className="mt-3 grid grid-cols-5 gap-1">
+              {previewParticipants.map(renderMemberTile)}
+              {participants.length > previewParticipants.length && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllMembers(true)}
+                  className="rounded-xl px-1.5 py-2 text-center hover:bg-[var(--color-bg-hover)] transition-colors"
+                >
+                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-bg-input)] border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-muted)]">
+                    +{participants.length - previewParticipants.length}
+                  </div>
+                  <p className="mt-1 truncate text-[10px] text-[var(--color-text-secondary)]">{t('common.showDetails')}</p>
+                </button>
+              )}
+            </div>
+
+            {showAllMembers && (
+              <div className="mt-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-primary)]/45 overflow-hidden">
+                <div className="px-3 py-2 space-y-1">
+                  {memberSections.owners.map(({ owner, bots }) => (
+                    <div key={owner.entity_id}>
+                      {renderMemberRow(owner)}
+                      {bots.map((bot) => renderMemberRow(bot, { nested: true }))}
+                    </div>
+                  ))}
+                  {memberSections.orphanBots.length > 0 && (
+                    <div className="pt-1">
+                      <div className="flex items-center gap-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                        <span>{t('composer.mentionBots')}</span>
+                        <span className="h-px flex-1 bg-[var(--color-border)]" />
+                      </div>
+                      {memberSections.orphanBots.map((bot) => renderMemberRow(bot, { orphanBot: true }))}
+                    </div>
+                  )}
+                </div>
+
+                {canAddMember && !isArchived && (
+                  <div className="border-t border-[var(--color-border)] px-3 py-2">
+                    {showAddMember ? (
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                          <input
+                            value={addMemberSearch}
+                            onChange={(e) => setAddMemberSearch(e.target.value)}
+                            placeholder={t('conversation.search')}
+                            autoFocus
+                            className="w-full h-8 pl-8 pr-3 rounded-lg bg-[var(--color-bg-input)] border border-[var(--color-border)] text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]/50"
+                          />
+                        </div>
+                        {addMemberLoading ? (
+                          <div className="flex justify-center py-2">
+                            <Loader2 className="w-4 h-4 text-[var(--color-text-muted)] animate-spin" />
+                          </div>
+                        ) : (
+                          <div className="max-h-36 overflow-y-auto space-y-0.5">
+                            {filteredAddableEntities.map((e) => (
+                              <button
+                                key={e.id}
+                                onClick={() => handleAddMember(e.id)}
+                                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--color-bg-hover)] cursor-pointer transition-colors text-left"
+                              >
+                                <EntityAvatar entity={e} size="xs" />
+                                <span className="text-xs text-[var(--color-text-primary)] truncate flex-1">{entityDisplayName(e)}</span>
+                                <span className="text-[9px] text-[var(--color-text-muted)]">
+                                  {isBotOrService(e) ? t('friends.yourBot') : t('friends.friend')}
+                                </span>
+                              </button>
+                            ))}
+                            {filteredAddableEntities.length === 0 && (
+                              <p className="text-[10px] text-[var(--color-text-muted)] text-center py-2">{t('common.noEntities')}</p>
+                            )}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => { setShowAddMember(false); setAddMemberSearch('') }}
+                          className="w-full text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] py-1 cursor-pointer"
+                        >
+                          {t('common.cancel')}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleOpenAddMember}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 cursor-pointer transition-colors"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        {t('common.addMember')}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Title */}
         <div className="px-4 py-3 border-b border-[var(--color-border)]">
           <label className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider">{t('settings.name')}</label>
@@ -283,40 +428,6 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
               )}
             </div>
           )}
-        </div>
-
-        {/* Conversation ID */}
-        <div className="px-4 py-2 border-b border-[var(--color-border)]">
-          <label className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider">{t('settings.conversationId')}</label>
-          <div className="flex items-center gap-2 mt-1">
-            <code className="text-xs text-[var(--color-text-secondary)] font-mono bg-[var(--color-bg-tertiary)] px-2 py-0.5 rounded">
-              {displayConversationId || '—'}
-            </code>
-            {displayConversationId ? (
-              <button
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(displayConversationId)
-                    setIdCopyError(null)
-                    setIdCopied(true)
-                    setTimeout(() => setIdCopied(false), 2000)
-                  } catch {
-                    setIdCopied(false)
-                    setIdCopyError(t('common.copyFailed'))
-                  }
-                }}
-                className="p-1 hover:bg-[var(--color-bg-hover)] rounded cursor-pointer transition-colors"
-                title={t('settings.conversationId')}
-              >
-                {idCopied
-                  ? <Check className="w-3 h-3 text-[var(--color-success)]" />
-                  : <Copy className="w-3 h-3 text-[var(--color-text-muted)]" />
-                }
-              </button>
-            ) : null}
-            {displayConversationId && idCopied ? <span className="text-[10px] text-[var(--color-success)]">{t('settings.idCopied')}</span> : null}
-            {idCopyError && <span className="text-[10px] text-red-400">{idCopyError}</span>}
-          </div>
         </div>
 
         {/* Description */}
@@ -350,17 +461,6 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
               </div>
             )}
           </div>
-        )}
-
-        {/* Agent config (prompt editing) */}
-        <AgentConfigSection conversationId={conversation.id} canManage={canManage && !isArchived} />
-
-        {/* Memory section */}
-        <MemorySection conversationId={conversation.id} canManage={canManage && !isArchived} />
-
-        {/* Invite links (owner/admin only) */}
-        {canManage && isGroup && !isArchived && (
-          <InviteLinkSection conversationId={conversation.id} />
         )}
 
         {/* Notification settings */}
@@ -416,83 +516,60 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
           </div>
         )}
 
-        {/* Members */}
-        <div className="px-4 py-3 border-b border-[var(--color-border)]">
-          <label className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
-            {t('settings.members')} ({participants.length})
-          </label>
-          <div className="mt-2 space-y-1">
-            {memberSections.owners.map(({ owner, bots }) => (
-              <div key={owner.entity_id}>
-                {renderMemberRow(owner)}
-                {bots.map((bot) => renderMemberRow(bot, { nested: true }))}
-              </div>
-            ))}
-            {memberSections.orphanBots.length > 0 && (
-              <div className="pt-1">
-                <div className="flex items-center gap-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-                  <span>{t('composer.mentionBots')}</span>
-                  <span className="h-px flex-1 bg-[var(--color-border)]" />
+        {/* Advanced conversation settings */}
+        <div className="border-b border-[var(--color-border)]">
+          <button
+            type="button"
+            onClick={() => setShowAdvancedSettings((value) => !value)}
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-[var(--color-bg-hover)] transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Settings2 className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+              <span className="text-xs font-medium text-[var(--color-text-secondary)]">{t('settings.advancedSettings')}</span>
+            </div>
+            <ChevronDown className={cn('w-3.5 h-3.5 text-[var(--color-text-muted)] transition-transform', showAdvancedSettings && 'rotate-180')} />
+          </button>
+          {showAdvancedSettings && (
+            <div className="border-t border-[var(--color-border)]">
+              <div className="px-4 py-2 border-b border-[var(--color-border)]">
+                <label className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider">{t('settings.conversationId')}</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <code className="text-xs text-[var(--color-text-secondary)] font-mono bg-[var(--color-bg-tertiary)] px-2 py-0.5 rounded">
+                    {displayConversationId || '—'}
+                  </code>
+                  {displayConversationId ? (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(displayConversationId)
+                          setIdCopyError(null)
+                          setIdCopied(true)
+                          setTimeout(() => setIdCopied(false), 2000)
+                        } catch {
+                          setIdCopied(false)
+                          setIdCopyError(t('common.copyFailed'))
+                        }
+                      }}
+                      className="p-1 hover:bg-[var(--color-bg-hover)] rounded cursor-pointer transition-colors"
+                      title={t('settings.conversationId')}
+                    >
+                      {idCopied
+                        ? <Check className="w-3 h-3 text-[var(--color-success)]" />
+                        : <Copy className="w-3 h-3 text-[var(--color-text-muted)]" />
+                      }
+                    </button>
+                  ) : null}
+                  {displayConversationId && idCopied ? <span className="text-[10px] text-[var(--color-success)]">{t('settings.idCopied')}</span> : null}
+                  {idCopyError && <span className="text-[10px] text-red-400">{idCopyError}</span>}
                 </div>
-                {memberSections.orphanBots.map((bot) => renderMemberRow(bot, { orphanBot: true }))}
               </div>
-            )}
-          </div>
 
-          {/* Add member inline */}
-          {canAddMember && isGroup && !isArchived && (
-            showAddMember ? (
-              <div className="mt-2 space-y-2">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                  <input
-                    value={addMemberSearch}
-                    onChange={(e) => setAddMemberSearch(e.target.value)}
-                    placeholder={t('conversation.search')}
-                    autoFocus
-                    className="w-full h-8 pl-8 pr-3 rounded-lg bg-[var(--color-bg-input)] border border-[var(--color-border)] text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]/50"
-                  />
-                </div>
-                {addMemberLoading ? (
-                  <div className="flex justify-center py-2">
-                    <Loader2 className="w-4 h-4 text-[var(--color-text-muted)] animate-spin" />
-                  </div>
-                ) : (
-                  <div className="max-h-36 overflow-y-auto space-y-0.5">
-                    {filteredAddableEntities.map((e) => (
-                      <button
-                        key={e.id}
-                        onClick={() => handleAddMember(e.id)}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--color-bg-hover)] cursor-pointer transition-colors text-left"
-                      >
-                        <EntityAvatar entity={e} size="xs" />
-                        <span className="text-xs text-[var(--color-text-primary)] truncate flex-1">{entityDisplayName(e)}</span>
-                        <span className="text-[9px] text-[var(--color-text-muted)]">
-                          {isBotOrService(e) ? t('friends.yourBot') : t('friends.friend')}
-                        </span>
-                      </button>
-                    ))}
-                    {filteredAddableEntities.length === 0 && (
-                      <p className="text-[10px] text-[var(--color-text-muted)] text-center py-2">{t('common.noEntities')}</p>
-                    )}
-                  </div>
-                )}
-                <button
-                  onClick={() => { setShowAddMember(false); setAddMemberSearch('') }}
-                  className="w-full text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] py-1 cursor-pointer"
-                >
-                  {t('common.cancel')}
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleOpenAddMember}
-                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 cursor-pointer transition-colors"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                {t('common.addMember')}
-              </button>
-            )
+              <AgentConfigSection conversationId={conversation.id} canManage={canManage && !isArchived} />
+              <MemorySection conversationId={conversation.id} canManage={canManage && !isArchived} />
+              {canManage && isGroup && !isArchived && (
+                <InviteLinkSection conversationId={conversation.id} />
+              )}
+            </div>
           )}
         </div>
 
