@@ -37,6 +37,7 @@ interface Props {
   onCancelReply?: () => void
   attachmentsEnabled?: boolean
   targetBot?: Entity | null
+  editPrefill?: { id: number; text: string } | null
 }
 
 interface DraftReplyPreview {
@@ -141,7 +142,7 @@ function writeComposerDraft(conversationId: number | undefined, params: {
   }
 }
 
-export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpload, onTyping, disabled, placeholder, participants, isObserver, enableMentions = true, replyTo, onCancelReply, attachmentsEnabled = true, targetBot = null }: Props) {
+export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpload, onTyping, disabled, placeholder, participants, isObserver, enableMentions = true, replyTo, onCancelReply, attachmentsEnabled = true, targetBot = null, editPrefill = null }: Props) {
   const { t } = useTranslation()
   const [text, setText] = useState('')
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([])
@@ -252,6 +253,24 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
   useEffect(() => {
     if (replyTo) textareaRef.current?.focus()
   }, [replyTo])
+
+  useEffect(() => {
+    if (!editPrefill) return
+    setText(editPrefill.text)
+    setPendingFiles([])
+    setMentionIds([])
+    setAssignedMentionIds([])
+    setMentionQuery(null)
+    setMentionStart(-1)
+    queueMicrotask(() => {
+      const ta = textareaRef.current
+      if (!ta) return
+      ta.focus()
+      ta.setSelectionRange(editPrefill.text.length, editPrefill.text.length)
+      ta.style.height = 'auto'
+      ta.style.height = Math.min(ta.scrollHeight, 96) + 'px'
+    })
+  }, [editPrefill])
 
   // Typing indicator (throttle 3s)
   const lastTypingRef = useRef(0)

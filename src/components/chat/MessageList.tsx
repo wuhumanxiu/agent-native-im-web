@@ -26,6 +26,7 @@ interface Props {
   onRefresh?: () => Promise<void>
   onInteractionReply?: (msgId: number, choice: string, label: string) => void
   onRevoke?: (msgId: number) => void
+  onEditRecalled?: (msg: Message) => void
   onReply?: (msg: Message) => void
   onReact?: (msgId: number, emoji: string) => void
   onRetryOutbox?: (tempId: string) => void
@@ -37,7 +38,7 @@ interface Props {
   progress?: ProgressEntry
 }
 
-export function MessageList({ conversationId, messages, myEntityId, loading, refreshing = false, hasMore, lastReadMessageId, streams, participants, readReceipts, onLoadMore, onRefresh, onInteractionReply, onRevoke, onReply, onReact, onRetryOutbox, onCancelStream, onEntitySendMessage, onEntityViewDetails, onEntityShareCard, thinkingEntity, progress }: Props) {
+export function MessageList({ conversationId, messages, myEntityId, loading, refreshing = false, hasMore, lastReadMessageId, streams, participants, readReceipts, onLoadMore, onRefresh, onInteractionReply, onRevoke, onEditRecalled, onReply, onReact, onRetryOutbox, onCancelStream, onEntitySendMessage, onEntityViewDetails, onEntityShareCard, thinkingEntity, progress }: Props) {
   const { t } = useTranslation()
   const endRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -319,6 +320,7 @@ export function MessageList({ conversationId, messages, myEntityId, loading, ref
                 interactionResponse={interactionResponseMap.get(msg.id)}
                 onInteractionReply={onInteractionReply}
                 onRevoke={onRevoke}
+                onEditRecalled={onEditRecalled}
                 onReply={onReply}
                 onReact={onReact}
                 onRetryOutbox={onRetryOutbox}

@@ -14,6 +14,7 @@ import { HandoverCard } from './HandoverCard'
 import { ImageLightbox } from '@/components/ui/ImageLightbox'
 import { MessageActionMenu } from '@/components/ui/MessageActionMenu'
 import { getSelectedMessageCopyText } from './message-copy'
+import { getEditableRecalledMessageText } from './recalled-message'
 import type { Entity, EntityCardPayload, Message } from '@/lib/types'
 import { ReactionBar } from './ReactionBar'
 import {
@@ -254,6 +255,7 @@ interface Props {
   interactionResponse?: Message
   onInteractionReply?: (msgId: number, choice: string, label: string) => void
   onRevoke?: (msgId: number) => void
+  onEditRecalled?: (msg: Message) => void
   onReply?: (msg: Message) => void
   onReact?: (msgId: number, emoji: string) => void
   onRetryOutbox?: (tempId: string) => void
@@ -265,7 +267,7 @@ interface Props {
   isRead?: boolean
 }
 
-export function MessageBubble({ message, isSelf, myEntityId, replyMessage, interactionResponse, onInteractionReply, onRevoke, onReply, onReact, onRetryOutbox, onEntitySendMessage, onEntityViewDetails, onEntityShareCard, onScrollToMessage, showSender = true, isRead }: Props) {
+export function MessageBubble({ message, isSelf, myEntityId, replyMessage, interactionResponse, onInteractionReply, onRevoke, onEditRecalled, onReply, onReact, onRetryOutbox, onEntitySendMessage, onEntityViewDetails, onEntityShareCard, onScrollToMessage, showSender = true, isRead }: Props) {
   const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const authUrl = (url: string | undefined) => authenticatedFileUrl(url, token)
@@ -330,12 +332,23 @@ export function MessageBubble({ message, isSelf, myEntityId, replyMessage, inter
 
   // Revoked message
   if (isRevoked) {
+    const editableText = getEditableRecalledMessageText(message)
+    const canEditRecalled = isSelf && !!editableText && !!onEditRecalled
     return (
       <div className="flex justify-center py-1">
         <span className="text-[11px] text-[var(--color-text-muted)] italic flex items-center gap-1">
           <Ban className="w-3 h-3" />
           {t('message.revoked', { name: entityDisplayName(message.sender) })}
         </span>
+        {canEditRecalled && (
+          <button
+            onClick={() => onEditRecalled?.(message)}
+            className="ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 cursor-pointer transition-colors"
+          >
+            <RotateCcw className="w-3 h-3" />
+            {t('message.editRecalled')}
+          </button>
+        )}
       </div>
     )
   }

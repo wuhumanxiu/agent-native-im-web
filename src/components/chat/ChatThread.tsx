@@ -17,8 +17,10 @@ import { SkeletonLoader } from '@/components/ui/SkeletonLoader'
 import { Search, Users, ArrowLeft, Loader2, X, Settings, ListTodo, Bug, Check, Contact, Send } from 'lucide-react'
 import { useSettingsStore } from '@/store/settings'
 import { inspectChatBubbles, copyToClipboard } from '@/lib/layout-inspector'
+import { getEditableRecalledMessageText } from './recalled-message'
 
 const EMPTY_MESSAGES: Message[] = []
+const REVOKE_NOTICE_KEY = 'ani:revoke-notice:v1'
 
 interface Props {
   conversation: Conversation
@@ -60,6 +62,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
   const [searchLoading, setSearchLoading] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
   const [replyTo, setReplyTo] = useState<Message | null>(null)
+  const [editPrefill, setEditPrefill] = useState<{ id: number; text: string } | null>(null)
   const [dragging, setDragging] = useState(false)
   const [debugCopied, setDebugCopied] = useState(false)
   const [debugLogged, setDebugLogged] = useState(false)
@@ -339,6 +342,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
         setSearching(false)
         setSearchQuery('')
         setSearchResults(null)
+        setEditPrefill(null)
         // replyTo is restored from draft above, only reset if no draft
         const raw = localStorage.getItem(`draft:${conversation.id}`)
         if (!raw) setReplyTo(null)
@@ -455,6 +459,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
     // Capture reply target before clearing
     const currentReplyTo = replyTo
     setReplyTo(null)
+    setEditPrefill(null)
     // Clear draft on send
     localStorage.removeItem(`draft:${conversation.id}`)
 
@@ -642,8 +647,19 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
     const res = await api.revokeMessage(token, msgId)
     if (res.ok) {
       revokeMessage(conversation.id, msgId)
+      if (!localStorage.getItem(REVOKE_NOTICE_KEY)) {
+        localStorage.setItem(REVOKE_NOTICE_KEY, '1')
+        window.alert(t('message.revokeNotice'))
+      }
     }
-  }, [token, conversation.id, isArchived, revokeMessage])
+  }, [token, conversation.id, isArchived, revokeMessage, t])
+
+  const handleEditRecalled = useCallback((msg: Message) => {
+    const text = getEditableRecalledMessageText(msg)
+    if (!text) return
+    setReplyTo(null)
+    setEditPrefill({ id: msg.id, text })
+  }, [])
 
   const handleReact = useCallback(async (msgId: number, emoji: string) => {
     const res = await api.toggleReaction(token, msgId, emoji)
@@ -975,6 +991,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
           onRefresh={searchResults !== null ? undefined : () => refreshMessages({ showSpinner: true })}
           onInteractionReply={handleInteractionReply}
           onRevoke={isArchived ? undefined : handleRevoke}
+          onEditRecalled={isArchived ? undefined : handleEditRecalled}
           onReply={isArchived ? undefined : (msg) => setReplyTo(msg)}
           onReact={isArchived ? undefined : handleReact}
           onRetryOutbox={isArchived ? undefined : handleRetryOutbox}
@@ -1100,6 +1117,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
         targetBot={composerTargetBot}
+        editPrefill={editPrefill}
       />
     </div>
   )
