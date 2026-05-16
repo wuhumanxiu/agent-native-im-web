@@ -11,6 +11,7 @@ import {
   Send,
   ShieldCheck,
   X,
+  ChevronDown,
 } from 'lucide-react'
 import * as api from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
@@ -83,6 +84,7 @@ export function FeedbackSettingsSection({ token, isMobile }: FeedbackSettingsSec
   const [query, setQuery] = useState('')
   const [comment, setComment] = useState('')
   const [commentInternal, setCommentInternal] = useState(false)
+  const [formExpanded, setFormExpanded] = useState(true)
 
   const loadFeedback = useCallback(async () => {
     setLoading(true)
@@ -443,108 +445,125 @@ export function FeedbackSettingsSection({ token, isMobile }: FeedbackSettingsSec
     </div>
   )
 
+  const submitPanel = (
+    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setFormExpanded((prev) => !prev)}
+        aria-expanded={formExpanded}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-[var(--color-bg-hover)]"
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-[var(--color-accent-dim)] text-[var(--color-accent)]">
+            <MessageSquarePlus className="h-5 w-5" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-[var(--color-text-primary)]">{t('settings.feedbackNew')}</span>
+            <span className="mt-0.5 block truncate text-[11px] text-[var(--color-text-muted)]">{t('settings.feedbackNewHint')}</span>
+          </span>
+        </span>
+        <ChevronDown className={cn('h-4 w-4 flex-shrink-0 text-[var(--color-text-muted)] transition-transform', formExpanded && 'rotate-180')} />
+      </button>
+
+      {formExpanded ? (
+        <div className="border-t border-[var(--color-border)] p-4">
+          <div className="grid gap-4 lg:grid-cols-[minmax(280px,0.95fr)_minmax(360px,1.05fr)]">
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={form.type}
+                  onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as FeedbackType }))}
+                  className="h-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 text-xs text-[var(--color-text-primary)] outline-none"
+                >
+                  {feedbackTypes.map((type) => <option key={type} value={type}>{t(`settings.feedbackType.${type}`)}</option>)}
+                </select>
+                <select
+                  value={form.severity}
+                  onChange={(event) => setForm((prev) => ({ ...prev, severity: event.target.value as FeedbackLevel }))}
+                  className="h-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 text-xs text-[var(--color-text-primary)] outline-none"
+                >
+                  {feedbackLevels.map((level) => <option key={level} value={level}>{t(`settings.feedbackLevel.${level}`)}</option>)}
+                </select>
+              </div>
+              <input
+                value={form.title}
+                onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                placeholder={t('settings.feedbackTitlePlaceholder')}
+                className="h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]/50"
+              />
+              <input
+                value={form.contact}
+                onChange={(event) => setForm((prev) => ({ ...prev, contact: event.target.value }))}
+                placeholder={t('settings.feedbackContactPlaceholder')}
+                className="h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]/50"
+              />
+              {attachments.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {attachments.map((attachment, index) => (
+                    <span key={`${attachment.url}-${index}`} className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-[var(--color-bg-hover)] px-2.5 py-1.5 text-[11px] text-[var(--color-text-secondary)]">
+                      <Paperclip className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="truncate">{attachment.filename}</span>
+                      <button type="button" onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== index))}>
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between gap-2">
+                <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--color-border)] px-3 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]">
+                  {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
+                  {t('settings.feedbackAttach')}
+                  <input
+                    type="file"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      event.target.value = ''
+                      void uploadAttachment(file)
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => void submitFeedback()}
+                  disabled={submitting || !form.title.trim() || !form.description.trim()}
+                  className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-xl bg-[var(--color-accent)] px-4 text-xs font-semibold text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-40"
+                >
+                  {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                  {t('settings.feedbackSubmit')}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs leading-5 text-[var(--color-text-muted)]">{t('settings.feedbackDesc')}</p>
+              <textarea
+                value={form.description}
+                onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+                placeholder={t('settings.feedbackDescPlaceholder')}
+                rows={8}
+                className="min-h-44 w-full resize-y rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 py-2 text-sm leading-6 text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]/50"
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+
   return (
     <div className="space-y-5">
       {!isMobile && <h3 className="text-base font-semibold text-[var(--color-text-primary)]">{t('settings.feedback')}</h3>}
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-[var(--color-accent-dim)] text-[var(--color-accent)]">
-            <MessageSquarePlus className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-[var(--color-text-primary)]">{t('settings.feedbackTitle')}</p>
-            <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">{t('settings.feedbackDesc')}</p>
-          </div>
-        </div>
-      </div>
 
       {error ? <p className="rounded-xl bg-[var(--color-error)]/10 px-3 py-2 text-xs text-[var(--color-error)]">{error}</p> : null}
       {success ? <p className="rounded-xl bg-[var(--color-success)]/10 px-3 py-2 text-xs text-[var(--color-success)]">{success}</p> : null}
 
-      <div className={cn('grid gap-4', isMobile ? 'grid-cols-1' : 'grid-cols-[minmax(320px,0.85fr)_minmax(380px,1.15fr)]')}>
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm font-semibold text-[var(--color-text-primary)]">{t('settings.feedbackNew')}</p>
-              <span className="text-[10px] text-[var(--color-text-muted)]">{t('settings.feedbackNewHint')}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                value={form.type}
-                onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as FeedbackType }))}
-                className="h-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 text-xs text-[var(--color-text-primary)] outline-none"
-              >
-                {feedbackTypes.map((type) => <option key={type} value={type}>{t(`settings.feedbackType.${type}`)}</option>)}
-              </select>
-              <select
-                value={form.severity}
-                onChange={(event) => setForm((prev) => ({ ...prev, severity: event.target.value as FeedbackLevel }))}
-                className="h-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 text-xs text-[var(--color-text-primary)] outline-none"
-              >
-                {feedbackLevels.map((level) => <option key={level} value={level}>{t(`settings.feedbackLevel.${level}`)}</option>)}
-              </select>
-            </div>
-            <input
-              value={form.title}
-              onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-              placeholder={t('settings.feedbackTitlePlaceholder')}
-              className="mt-3 h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]/50"
-            />
-            <textarea
-              value={form.description}
-              onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-              placeholder={t('settings.feedbackDescPlaceholder')}
-              rows={5}
-              className="mt-3 w-full resize-none rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 py-2 text-sm leading-6 text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]/50"
-            />
-            <input
-              value={form.contact}
-              onChange={(event) => setForm((prev) => ({ ...prev, contact: event.target.value }))}
-              placeholder={t('settings.feedbackContactPlaceholder')}
-              className="mt-3 h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]/50"
-            />
-            {attachments.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {attachments.map((attachment, index) => (
-                  <span key={`${attachment.url}-${index}`} className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-[var(--color-bg-hover)] px-2.5 py-1.5 text-[11px] text-[var(--color-text-secondary)]">
-                    <Paperclip className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate">{attachment.filename}</span>
-                    <button type="button" onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== index))}>
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            ) : null}
-            <div className="mt-4 flex items-center justify-between gap-2">
-              <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--color-border)] px-3 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]">
-                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
-                {t('settings.feedbackAttach')}
-                <input
-                  type="file"
-                  className="hidden"
-                  disabled={uploading}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0]
-                    event.target.value = ''
-                    void uploadAttachment(file)
-                  }}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={() => void submitFeedback()}
-                disabled={submitting || !form.title.trim() || !form.description.trim()}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--color-accent)] px-4 text-xs font-semibold text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-40"
-              >
-                {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                {t('settings.feedbackSubmit')}
-              </button>
-            </div>
-          </div>
+      {submitPanel}
 
-          {listPanel}
-        </div>
+      <div className={cn('grid items-start gap-4', isMobile ? 'grid-cols-1' : 'grid-cols-[minmax(320px,0.9fr)_minmax(380px,1.1fr)]')}>
+        {listPanel}
         {detailPanel}
       </div>
     </div>
