@@ -3,16 +3,17 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth'
 import { useConversationsStore } from '@/store/conversations'
+import { useMessagesStore } from '@/store/messages'
 import { useNotificationsStore } from '@/store/notifications'
 import * as api from '@/lib/api'
 import { cacheFriendsSnapshot, getCachedFriendsSnapshot } from '@/lib/cache'
-import type { Entity, FriendRequest } from '@/lib/types'
+import type { Conversation, Entity, EntityCardPayload, FriendRequest } from '@/lib/types'
 import { EntityAvatar } from '@/components/entity/EntityAvatar'
 import { EntityPopoverCard } from '@/components/entity/EntityPopoverCard'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { entityDisplayName, cn, isBotOrService } from '@/lib/utils'
 import { openOrCreateDirectConversation, conversationRouteFor, findExistingDirectConversation } from '@/lib/direct-conversation'
-import { Loader2, Search, UserPlus, UserCheck, X, Users, SendHorizonal, MessageSquare, RotateCcw } from 'lucide-react'
+import { Bot, Contact, Loader2, Search, UserPlus, UserCheck, X, Users, SendHorizonal, MessageSquare, RotateCcw, Send } from 'lucide-react'
 import { usePresenceStore } from '@/store/presence'
 
 type Tab = 'friends' | 'requests'
@@ -24,6 +25,8 @@ export function FriendsPage() {
   const me = useAuthStore((s) => s.entity)!
   const conversations = useConversationsStore((s) => s.conversations)
   const addConversation = useConversationsStore((s) => s.addConversation)
+  const updateConversation = useConversationsStore((s) => s.updateConversation)
+  const addMessage = useMessagesStore((s) => s.addMessage)
   const actingEntities = useNotificationsStore((s) => s.actingEntities)
   const removeFriendRequestFromStore = useNotificationsStore((s) => s.removeFriendRequest)
   const markNotificationsDirty = useNotificationsStore((s) => s.markDirty)
@@ -44,6 +47,8 @@ export function FriendsPage() {
   const [popoverEntity, setPopoverEntity] = useState<Entity | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<DOMRect | null>(null)
   const [removeCandidate, setRemoveCandidate] = useState<Entity | null>(null)
+  const [shareCardEntity, setShareCardEntity] = useState<Entity | null>(null)
+  const [shareCardSendingId, setShareCardSendingId] = useState<number | null>(null)
   const inboxDirtyVersion = useNotificationsStore((s) => s.dirtyVersion)
 
   const actingOptions = useMemo(() => {
@@ -154,6 +159,63 @@ export function FriendsPage() {
     if (entity.public_id) return compactUuid(entity.public_id)
     return ''
   }, [compactUuid])
+
+  const shareTargetConversations = useMemo(() => {
+    if (!shareCardEntity) return []
+    return conversations.filter((conversation) => {
+      if (conversation.conv_type === 'direct') {
+        return !conversation.participants?.some((participant) => participant.entity_id === shareCardEntity.id)
+      }
+      return (conversation.participants || []).some((participant) =>
+        participant.entity_id !== me.id && participant.entity_id !== shareCardEntity.id
+      )
+    })
+  }, [conversations, me.id, shareCardEntity])
+
+  const buildEntityCardMessage = useCallback((entity: Entity) => {
+    const card: EntityCardPayload = {
+      entity_id: entity.id,
+      public_id: entity.public_id,
+      bot_id: entity.bot_id,
+      entity_type: entity.entity_type,
+      name: entity.name,
+      display_name: entityDisplayName(entity),
+      avatar_url: entity.avatar_url,
+    }
+    const summary = t('entityCard.shareSummary', { name: card.display_name })
+    return {
+      content_type: 'text' as const,
+      layers: {
+        summary,
+        data: { body: summary, entity_card: card },
+      },
+    }
+  }, [t])
+
+  const handleSendEntityCardToConversation = useCallback(async (targetConversation: Conversation) => {
+    if (!shareCardEntity || shareCardSendingId !== null) return
+    setShareCardSendingId(targetConversation.id)
+    const message = buildEntityCardMessage(shareCardEntity)
+    try {
+      const res = await api.sendMessage(token, {
+        conversation_id: targetConversation.id,
+        conversation_public_id: targetConversation.public_id || (typeof targetConversation.metadata?.public_id === 'string' ? targetConversation.metadata.public_id : undefined),
+        ...message,
+      })
+      if (res.ok && res.data) {
+        addMessage(res.data)
+        updateConversation(targetConversation.id, {
+          last_message: res.data,
+          updated_at: res.data.created_at,
+        })
+        setShareCardEntity(null)
+      }
+    } catch {
+      // Keep the modal open so the user can retry from the same target list.
+    } finally {
+      setShareCardSendingId(null)
+    }
+  }, [addMessage, buildEntityCardMessage, shareCardEntity, shareCardSendingId, token, updateConversation])
 
   const sendRequest = useCallback(async (targetId: number) => {
     setSubmittingId(targetId)
@@ -386,76 +448,80 @@ export function FriendsPage() {
               <div className="text-xs text-[var(--color-text-muted)] mt-1">{t('friends.emptyDesc')}</div>
             </div>
           ) : (
-            <div className="grid gap-3">
-              {friends.map((entity) => (
-                <div key={entity.id} className="flex items-start gap-3 px-3 rounded-2xl bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-hover)] transition-colors">
-                  <div className="mt-2 flex-shrink-0">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        setPopoverEntity(entity)
-                        setPopoverAnchor((e.currentTarget as HTMLElement).getBoundingClientRect())
-                      }}
-                      className="flex-shrink-0 cursor-pointer"
-                    >
-                      <EntityAvatar entity={entity} size="sm" showStatus />
-                    </button>
-                  </div>
-                  <div className="min-w-0 flex-1 py-2 border-b border-[var(--color-border)]/70">
-                    <div className="flex items-center gap-3">
-                    <button
-                      onClick={(e) => {
-                        setPopoverEntity(entity)
-                        setPopoverAnchor((e.currentTarget as HTMLElement).getBoundingClientRect())
-                      }}
-                      className="min-w-0 flex-1 text-left cursor-pointer"
-                    >
-                      <div className="text-sm font-medium text-[var(--color-text-primary)] truncate">{entityDisplayName(entity)}</div>
-                      <div className="text-xs text-[var(--color-text-muted)] truncate">{secondaryLabelOf(entity)}</div>
-                    </button>
-                    <div className="ml-auto flex items-center gap-2 shrink-0">
-                    {isBotOrService(entity) ? (
-                      <>
-                        <button
-                          onClick={() => void handleOpenDirect(entity, 'new')}
-                          disabled={submittingId === entity.id}
-                          aria-label={t('friends.newBotChat')}
-                          title={t('friends.newBotChat')}
-                          className="h-9 w-9 sm:w-auto sm:px-3 rounded-xl bg-[var(--color-accent)] text-white text-xs font-medium cursor-pointer inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        >
-                          {submittingId === entity.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
-                          <span className="hidden sm:inline">{t('friends.newBotChat')}</span>
-                        </button>
-                        {findExistingDirectConversation(conversations, me.id, entity.id) && (
-                          <button
-                            onClick={() => void handleOpenDirect(entity, 'existing')}
-                            disabled={submittingId === entity.id}
-                            aria-label={t('friends.continueBotChat')}
-                            title={t('friends.continueBotChat')}
-                            className="h-9 w-9 sm:w-auto sm:px-3 rounded-xl border border-[var(--color-border)] text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] cursor-pointer inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">{t('friends.continueBotChat')}</span>
-                          </button>
-                        )}
-                      </>
-                    ) : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {friends.map((entity) => {
+                const isBot = isBotOrService(entity)
+                const existingDirect = findExistingDirectConversation(conversations, me.id, entity.id)
+                const primaryLabel = isBot ? t('friends.newBotChat') : t('friends.message')
+                return (
+                  <article
+                    key={entity.id}
+                    className="group relative overflow-hidden rounded-[22px] bg-[var(--color-bg-secondary)] p-4 ring-1 ring-[var(--color-border)]/70 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--color-bg-hover)] hover:ring-[var(--color-accent)]/25 hover:shadow-md"
+                  >
+                    <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-[var(--color-accent)]/30 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                    <div className="flex items-start gap-3">
                       <button
-                        onClick={() => void handleOpenDirect(entity, 'existing')}
+                        type="button"
+                        onClick={(e) => {
+                          setPopoverEntity(entity)
+                          setPopoverAnchor((e.currentTarget as HTMLElement).getBoundingClientRect())
+                        }}
+                        className="flex-shrink-0 cursor-pointer"
+                        aria-label={entityDisplayName(entity)}
+                      >
+                        <EntityAvatar entity={entity} size="md" showStatus />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          setPopoverEntity(entity)
+                          setPopoverAnchor((e.currentTarget as HTMLElement).getBoundingClientRect())
+                        }}
+                        className="min-w-0 flex-1 text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{entityDisplayName(entity)}</span>
+                          {isBot && <Bot className="h-3.5 w-3.5 flex-shrink-0 text-[var(--color-text-muted)]" />}
+                        </div>
+                        <div className="mt-0.5 truncate text-xs text-[var(--color-text-muted)]">{secondaryLabelOf(entity)}</div>
+                      </button>
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-2">
+                      <button
+                        onClick={() => void handleOpenDirect(entity, isBot ? 'new' : 'existing')}
                         disabled={submittingId === entity.id}
-                        aria-label={t('friends.message')}
-                        title={t('friends.message')}
-                        className="h-9 w-9 sm:w-auto sm:px-3 rounded-xl bg-[var(--color-accent)] text-white text-xs font-medium cursor-pointer inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        aria-label={primaryLabel}
+                        title={primaryLabel}
+                        className="h-9 min-w-0 flex-1 rounded-xl bg-[var(--color-accent)] px-3 text-xs font-medium text-white cursor-pointer inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
                       >
                         {submittingId === entity.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
-                          <span className="hidden sm:inline">{t('friends.message')}</span>
+                        <span className="truncate">{primaryLabel}</span>
+                      </button>
+                      {isBot && existingDirect && (
+                        <button
+                          onClick={() => void handleOpenDirect(entity, 'existing')}
+                          disabled={submittingId === entity.id}
+                          aria-label={t('friends.continueBotChat')}
+                          title={t('friends.continueBotChat')}
+                          className="h-9 w-9 rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-primary)] cursor-pointer inline-flex items-center justify-center disabled:opacity-50"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
                         </button>
-                    )}
+                      )}
+                      <button
+                        onClick={() => setShareCardEntity(entity)}
+                        disabled={shareCardSendingId !== null}
+                        aria-label={t('entityPopover.shareCard')}
+                        title={t('entityPopover.shareCard')}
+                        className="h-9 w-9 rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-primary)] cursor-pointer inline-flex items-center justify-center disabled:opacity-50"
+                      >
+                        <Contact className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  </article>
+                )
+              })}
             </div>
           )
         ) : (
@@ -531,10 +597,85 @@ export function FriendsPage() {
           anchorRect={popoverAnchor}
           onClose={() => { setPopoverEntity(null); setPopoverAnchor(null) }}
           onSendMessage={(entity) => { void handleOpenDirect(entity) }}
+          onShareCard={(entity) => setShareCardEntity(entity)}
           onRemoveRelationship={(entity) => setRemoveCandidate(entity)}
           removeLabel={t('friends.remove')}
           onViewDetails={(entity) => navigate(entity.bot_id || entity.public_id ? `/bots/public/${encodeURIComponent(entity.bot_id || entity.public_id!)}` : `/bots/${entity.id}`)}
         />
+      )}
+      {shareCardEntity && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/55 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => shareCardSendingId === null && setShareCardEntity(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-2xl overflow-hidden"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-border)]">
+              <EntityAvatar entity={shareCardEntity} size="sm" />
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
+                  {t('entityCard.shareTo')}
+                </h3>
+                <p className="text-xs text-[var(--color-text-muted)] truncate">
+                  {entityDisplayName(shareCardEntity)}
+                </p>
+              </div>
+              <button
+                onClick={() => setShareCardEntity(null)}
+                disabled={shareCardSendingId !== null}
+                aria-label={t('common.close')}
+                className="w-8 h-8 rounded-xl hover:bg-[var(--color-bg-hover)] flex items-center justify-center cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4 text-[var(--color-text-muted)]" />
+              </button>
+            </div>
+            <div className="max-h-[55vh] overflow-y-auto py-2">
+              {shareTargetConversations.length === 0 ? (
+                <div className="px-4 py-8 text-center">
+                  <Contact className="w-8 h-8 mx-auto text-[var(--color-text-muted)] mb-2" />
+                  <p className="text-sm text-[var(--color-text-secondary)]">{t('entityCard.noShareTargets')}</p>
+                </div>
+              ) : shareTargetConversations.map((targetConversation) => {
+                const targetIsGroup = targetConversation.conv_type === 'group' || targetConversation.conv_type === 'channel'
+                const targetEntity = targetConversation.participants?.find((participant) => participant.entity_id !== me.id)?.entity
+                const title = targetConversation.title || (targetIsGroup ? t('conversation.groupChat') : entityDisplayName(targetEntity))
+                const subtitle = targetIsGroup
+                  ? t('conversation.participants', { count: targetConversation.participants?.length || 0 })
+                  : targetEntity?.public_id || targetEntity?.bot_id || ''
+                const sending = shareCardSendingId === targetConversation.id
+                return (
+                  <button
+                    key={targetConversation.id}
+                    onClick={() => void handleSendEntityCardToConversation(targetConversation)}
+                    disabled={shareCardSendingId !== null}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[var(--color-bg-hover)] transition-colors cursor-pointer disabled:opacity-60"
+                  >
+                    {targetIsGroup ? (
+                      <div className="w-9 h-9 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-border)] flex items-center justify-center flex-shrink-0">
+                        <Users className="w-4 h-4 text-[var(--color-accent)]" />
+                      </div>
+                    ) : (
+                      <EntityAvatar entity={targetEntity} size="sm" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{title}</p>
+                      {subtitle && <p className="text-xs text-[var(--color-text-muted)] truncate">{subtitle}</p>}
+                    </div>
+                    {sending ? (
+                      <Loader2 className="w-4 h-4 text-[var(--color-accent)] animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4 text-[var(--color-text-muted)]" />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
       )}
       <ConfirmDialog
         open={!!removeCandidate}
