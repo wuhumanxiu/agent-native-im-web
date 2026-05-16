@@ -19,6 +19,7 @@ import {
   MessageSquare, Users, ChevronRight, ChevronDown, ChevronUp, Loader2,
   Hash, Calendar, Tag, Key, Copy, Check, Clock,
   PowerOff, RotateCcw, Download, Activity, RefreshCw, Link, ExternalLink,
+  Cpu, Puzzle,
 } from 'lucide-react'
 
 interface Props {
@@ -34,6 +35,68 @@ interface Props {
   onRefresh?: () => void
 }
 
+type ConnectedDevice = {
+  device_id?: string
+  device_info?: string
+  entity_id?: number
+}
+
+type BotDiagnostics = {
+  online: boolean
+  connections: number
+  disconnect_count: number
+  forced_disconnect_count?: number
+  last_seen?: string
+  devices?: ConnectedDevice[]
+  hub: { total_ws_connections: number }
+}
+
+function metadataRecord(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  return value as Record<string, unknown>
+}
+
+function metadataString(sources: Array<Record<string, unknown> | undefined>, keys: string[]): string {
+  for (const source of sources) {
+    if (!source) continue
+    for (const key of keys) {
+      const value = source[key]
+      if (typeof value === 'string' && value.trim()) return value.trim()
+      if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+    }
+  }
+  return ''
+}
+
+function formatRuntimeName(value: string): string {
+  const normalized = value.trim().toLowerCase()
+  if (normalized === 'openclaw') return 'OpenClaw'
+  if (normalized === 'zebra' || normalized === 'zebra-agent') return 'Zebra Agent'
+  if (normalized === 'hermes' || normalized === 'hermes-agent') return 'Hermes Agent'
+  return value
+}
+
+function formatDeviceInfo(raw?: string): string {
+  const text = raw?.trim()
+  if (!text) return ''
+  try {
+    const parsed = JSON.parse(text) as Record<string, unknown>
+    const sources = [parsed, metadataRecord(parsed.runtime), metadataRecord(parsed.adapter), metadataRecord(parsed.plugin)]
+    const client = metadataString(sources, ['client', 'client_type', 'runtime', 'agent_runtime', 'platform', 'name'])
+    const clientVersion = metadataString(sources, ['client_version', 'runtime_version', 'agent_version', 'version'])
+    const adapter = metadataString(sources, ['adapter', 'adapter_name', 'extension', 'plugin'])
+    const adapterVersion = metadataString(sources, ['adapter_version', 'extension_version', 'plugin_version', 'ani_adapter_version', 'ani_plugin_version'])
+    return [
+      client ? formatRuntimeName(client) : '',
+      clientVersion ? `v${clientVersion}` : '',
+      adapter ? adapter : '',
+      adapterVersion ? `(${adapterVersion})` : '',
+    ].filter(Boolean).join(' ')
+  } catch {
+    return text
+  }
+}
+
 export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBack, onOpenConversation, onDisable, onReactivate, onStartChat, onRefresh }: Props) {
   const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)!
@@ -47,7 +110,7 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
   const [confirmDisable, setConfirmDisable] = useState(false)
   // credStatus removed — selfCheck provides the same info
   const [selfCheck, setSelfCheck] = useState<{ ready: boolean; recommendation: string[]; has_api_key: boolean; has_bootstrap: boolean } | null>(null)
-  const [diagnostics, setDiagnostics] = useState<{ online: boolean; connections: number; disconnect_count: number; forced_disconnect_count?: number; last_seen?: string; hub: { total_ws_connections: number } } | null>(null)
+  const [diagnostics, setDiagnostics] = useState<BotDiagnostics | null>(null)
   const [lastSeen, setLastSeen] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | false>(false)
   const [accessPackExpanded, setAccessPackExpanded] = useState(false)
@@ -289,6 +352,28 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
   const description = (meta?.description as string) || ''
   const caps = (meta?.capabilities as string[]) || []
   const tags = (meta?.tags as string[]) || []
+  const runtimeSources = [
+    meta,
+    metadataRecord(meta?.runtime),
+    metadataRecord(meta?.agent_runtime),
+    metadataRecord(meta?.client),
+    metadataRecord(meta?.integration),
+    metadataRecord(meta?.ani),
+    metadataRecord(meta?.adapter),
+    metadataRecord(meta?.plugin),
+  ]
+  const runtimeClient = metadataString(runtimeSources, ['runtime_client', 'client_type', 'client', 'agent_runtime', 'runtime', 'platform', 'name', 'type'])
+  const runtimeVersion = metadataString(runtimeSources, ['runtime_version', 'client_version', 'agent_version'])
+  const adapterName = metadataString(runtimeSources, ['adapter_name', 'adapter', 'extension', 'plugin'])
+  const adapterVersion = metadataString(runtimeSources, ['adapter_version', 'extension_version', 'plugin_version', 'ani_adapter_version', 'ani_plugin_version'])
+  const activeDeviceInfo = (diagnostics?.devices || []).map((device) => formatDeviceInfo(device.device_info)).find(Boolean) || ''
+  const runtimeRows = [
+    { icon: Cpu, label: t('bot.runtimeClient'), value: runtimeClient ? formatRuntimeName(runtimeClient) : '' },
+    { icon: Tag, label: t('bot.runtimeVersion'), value: runtimeVersion },
+    { icon: Puzzle, label: t('bot.adapterName'), value: adapterName },
+    { icon: Puzzle, label: t('bot.adapterVersion'), value: adapterVersion },
+    { icon: Wifi, label: t('bot.activeClient'), value: activeDeviceInfo },
+  ].filter((row) => row.value)
   const ownerEntity = bot.owner_id === myEntity?.id ? myEntity : null
   const directConvs = conversations.filter((c) => c.conv_type === 'direct')
   const groupConvs = conversations.filter((c) => c.conv_type === 'group' || c.conv_type === 'channel')
@@ -675,6 +760,33 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
                   {new Date(lastSeen).toLocaleString()}
                 </span>
               </InfoRow>
+            )}
+          </div>
+
+          <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/70 p-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Cpu className="h-4 w-4 text-[var(--color-accent)]" />
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                  {t('bot.runtimeTitle')}
+                </span>
+              </div>
+              {diagnostics?.connections ? (
+                <span className="rounded-full bg-[var(--color-success)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--color-success)]">
+                  {diagnostics.connections} {t('bot.connections')}
+                </span>
+              ) : null}
+            </div>
+            {runtimeRows.length > 0 ? (
+              <div className="grid gap-2">
+                {runtimeRows.map((row) => (
+                  <InfoRow key={row.label} icon={row.icon} label={row.label}>
+                    <span className="min-w-0 truncate text-xs text-[var(--color-text-primary)]">{row.value}</span>
+                  </InfoRow>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs leading-relaxed text-[var(--color-text-muted)]">{t('bot.runtimeUnknown')}</p>
             )}
           </div>
 
