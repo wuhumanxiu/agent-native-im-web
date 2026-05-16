@@ -125,6 +125,22 @@ export function parseComposerDraft(raw: string | null): ComposerDraftPayload | n
   }
 }
 
+function writeComposerDraft(conversationId: number | undefined, params: {
+  text: string
+  replyTo?: Message | null
+  mentionIds: number[]
+  assignedMentionIds?: number[]
+  pendingFiles: PendingFile[]
+}) {
+  if (!conversationId) return
+  const serialized = serializeComposerDraft(params)
+  if (serialized) {
+    localStorage.setItem(`draft:${conversationId}`, serialized)
+  } else {
+    localStorage.removeItem(`draft:${conversationId}`)
+  }
+}
+
 export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpload, onTyping, disabled, placeholder, participants, isObserver, enableMentions = true, replyTo, onCancelReply, attachmentsEnabled = true, targetBot = null }: Props) {
   const { t } = useTranslation()
   const [text, setText] = useState('')
@@ -133,27 +149,14 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
   const [assignedMentionIds, setAssignedMentionIds] = useState<number[]>([])
   const { state: recState, duration: recDuration, start: recStart, stop: recStop, cancel: recCancel } = useAudioRecorder()
   const prevConvIdRef = useRef<number | undefined>(undefined)
+  const restoringRef = useRef(false)
 
   // Draft save/restore per conversation
   useEffect(() => {
     if (!conversationId) return
-    // Save previous conversation's draft
-    if (prevConvIdRef.current !== undefined && prevConvIdRef.current !== conversationId) {
-      const serialized = serializeComposerDraft({
-        text,
-        replyTo,
-        mentionIds,
-        assignedMentionIds,
-        pendingFiles,
-      })
-      if (serialized) {
-        localStorage.setItem(`draft:${prevConvIdRef.current}`, serialized)
-      } else {
-        localStorage.removeItem(`draft:${prevConvIdRef.current}`)
-      }
-    }
     // Restore new conversation's draft
     const draft = parseComposerDraft(localStorage.getItem(`draft:${conversationId}`))
+    restoringRef.current = true
     if (draft) {
       setText(draft.text || '')
       setMentionIds(draft.mentionIds || [])
@@ -166,8 +169,19 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
       setPendingFiles([])
     }
     prevConvIdRef.current = conversationId
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only trigger on conversation switch, not on text/replyTo changes
+    queueMicrotask(() => { restoringRef.current = false })
   }, [conversationId])
+
+  useEffect(() => {
+    if (restoringRef.current) return
+    writeComposerDraft(conversationId, {
+      text,
+      replyTo,
+      mentionIds,
+      assignedMentionIds,
+      pendingFiles,
+    })
+  }, [conversationId, text, replyTo, mentionIds, assignedMentionIds, pendingFiles])
 
   // @mention autocomplete state
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
