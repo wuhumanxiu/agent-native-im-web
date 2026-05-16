@@ -6,16 +6,22 @@ import * as api from '@/lib/api'
 import { cn, previewAvatarUrl } from '@/lib/utils'
 import { reportError } from '@/lib/errors'
 
-// Preset bot avatar colors/emojis for quick selection
+// Lightweight emoji presets are kept for user avatars; bot flows use system PNG assets.
 const PRESET_AVATARS = [
   '🤖', '🧠', '⚡', '🔮', '🎯', '🛡️', '📊', '💬',
   '🔧', '📋', '🎨', '🔍', '📝', '🚀', '💡', '🌐',
 ]
 
+const SYSTEM_BOT_AVATARS = Array.from({ length: 12 }, (_, index) => {
+  const id = String(index + 1).padStart(2, '0')
+  return `/bot-avatars/ani-bot-${id}.png`
+})
+
 interface Props {
   currentUrl?: string
   onSelect: (url: string) => void
   size?: 'sm' | 'md' | 'lg'
+  presetMode?: 'emoji' | 'bot'
 }
 
 function generatePresetSvg(emoji: string): string {
@@ -26,7 +32,7 @@ function generatePresetSvg(emoji: string): string {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`
 }
 
-export function AvatarPicker({ currentUrl, onSelect, size = 'md' }: Props) {
+export function AvatarPicker({ currentUrl, onSelect, size = 'md', presetMode = 'emoji' }: Props) {
   const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)!
   const displayUrl = previewAvatarUrl(currentUrl)
@@ -97,6 +103,11 @@ export function AvatarPicker({ currentUrl, onSelect, size = 'md' }: Props) {
     setShowPicker(false)
   }
 
+  const handleSystemAvatarSelect = (url: string) => {
+    onSelect(url)
+    setShowPicker(false)
+  }
+
   const sizeClasses = size === 'sm' ? 'w-10 h-10' : size === 'lg' ? 'w-20 h-20' : 'w-14 h-14'
   const iconSize = size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5'
 
@@ -123,7 +134,10 @@ export function AvatarPicker({ currentUrl, onSelect, size = 'md' }: Props) {
       </button>
 
       {showPicker && (
-        <div className="absolute top-full left-0 mt-2 w-56 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-lg z-50 overflow-hidden">
+        <div className={cn(
+          'absolute top-full left-0 mt-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-lg z-50 overflow-hidden',
+          presetMode === 'bot' ? 'w-72' : 'w-56',
+        )}>
           <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
             <span className="text-[10px] font-semibold text-[var(--color-text-muted)] uppercase">{t('bot.avatar')}</span>
             <button onClick={() => setShowPicker(false)} className="cursor-pointer">
@@ -150,20 +164,48 @@ export function AvatarPicker({ currentUrl, onSelect, size = 'md' }: Props) {
             />
           </div>
 
-          {/* Preset grid */}
-          <div className="px-3 py-2">
-            <div className="grid grid-cols-8 gap-1">
-              {PRESET_AVATARS.map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => handlePresetSelect(emoji)}
-                  className="w-6 h-6 rounded-md hover:bg-[var(--color-bg-hover)] flex items-center justify-center text-sm cursor-pointer transition-colors"
-                >
-                  {emoji}
-                </button>
-              ))}
+          {presetMode === 'bot' ? (
+            <div className="px-3 py-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                  {t('bot.systemAvatars')}
+                </span>
+                <span className="text-[10px] text-[var(--color-text-muted)]">{SYSTEM_BOT_AVATARS.length}</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {SYSTEM_BOT_AVATARS.map((url, index) => {
+                  const selected = currentUrl === url
+                  return (
+                    <button
+                      key={url}
+                      onClick={() => handleSystemAvatarSelect(url)}
+                      className={cn(
+                        'aspect-square rounded-2xl border bg-[var(--color-bg-input)] p-1.5 cursor-pointer transition-all hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-sm',
+                        selected ? 'border-[var(--color-accent)] ring-2 ring-[var(--color-accent)]/20' : 'border-[var(--color-border)]',
+                      )}
+                      title={`${t('bot.systemAvatar')} ${index + 1}`}
+                    >
+                      <img src={url} alt="" className="h-full w-full rounded-xl object-cover" />
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="px-3 py-2">
+              <div className="grid grid-cols-8 gap-1">
+                {PRESET_AVATARS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => handlePresetSelect(emoji)}
+                    className="w-6 h-6 rounded-md hover:bg-[var(--color-bg-hover)] flex items-center justify-center text-sm cursor-pointer transition-colors"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

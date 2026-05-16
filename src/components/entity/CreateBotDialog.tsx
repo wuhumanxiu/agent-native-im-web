@@ -124,7 +124,7 @@ export function CreateBotDialog({ onClose, onCreated }: Props) {
       <div className="px-5 py-5 space-y-4 overflow-y-auto" style={isMobile ? { paddingBottom: 'max(20px, env(safe-area-inset-bottom))' } : undefined}>
         {/* Avatar + Name row */}
         <div className="flex items-end gap-3">
-          <AvatarPicker currentUrl={avatarUrl} onSelect={setAvatarUrl} size="sm" />
+          <AvatarPicker currentUrl={avatarUrl} onSelect={setAvatarUrl} size="sm" presetMode="bot" />
           <div className="flex-1">
             <label className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider">{t('bot.agentName')} *</label>
             <input

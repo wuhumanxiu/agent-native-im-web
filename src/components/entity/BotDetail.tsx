@@ -720,6 +720,7 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
                   onRefresh?.()
                 }}
                 size="sm"
+                presetMode="bot"
               />
               <span className="text-xs text-[var(--color-text-muted)]">{t('bot.changeAvatar')}</span>
             </div>

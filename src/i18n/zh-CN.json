@@ -555,6 +555,8 @@
     "disabledSection": "已停用",
     "avatar": "头像",
     "uploadAvatar": "上传图片",
+    "systemAvatars": "系统头像库",
+    "systemAvatar": "系统头像",
     "changeAvatar": "更换头像",
     "agentAccessPack": "Bot 接入包",
     "regenerateToGetToken": "先重新生成 Token",

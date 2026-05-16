@@ -555,6 +555,8 @@
     "disabledSection": "Disabled",
     "avatar": "Avatar",
     "uploadAvatar": "Upload image",
+    "systemAvatars": "System avatars",
+    "systemAvatar": "System avatar",
     "changeAvatar": "Change avatar",
     "agentAccessPack": "Bot Access Pack",
     "regenerateToGetToken": "Regenerate token to copy",
