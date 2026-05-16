@@ -222,9 +222,10 @@ export function UserSettingsPage({ onBack }: Props) {
   const [deviceMsg, setDeviceMsg] = useState('')
   const currentDeviceId = localStorage.getItem('aim_device_id') || ''
 
-  const loadDevices = useCallback(async () => {
-    setDevicesLoading(true)
-    setDeviceMsg('')  // Clear any previous messages
+  const loadDevices = useCallback(async (options?: { showLoading?: boolean; clearMessage?: boolean }) => {
+    const showLoading = options?.showLoading ?? true
+    if (showLoading) setDevicesLoading(true)
+    if (options?.clearMessage !== false) setDeviceMsg('')
     const res = await api.listDevices(token)
     if (res.ok && res.data?.devices) {
       const rawDevices = res.data.devices || []
@@ -240,32 +241,26 @@ export function UserSettingsPage({ onBack }: Props) {
       const uniqueDevices = Array.from(deviceMap.values())
 
       setDevices(uniqueDevices)
-    } else {
+    } else if (showLoading) {
       setDevices([])
     }
-    setDevicesLoading(false)
+    if (showLoading) setDevicesLoading(false)
   }, [token])
 
   useEffect(() => {
     if (section === 'devices') {
-      // Clear devices first to ensure clean state
-      setDevices([])
-      loadDevices()
+      void loadDevices({ showLoading: devices.length === 0 })
     }
-  }, [section, loadDevices])
+  }, [section, loadDevices, devices.length])
 
   useEffect(() => {
     if (section !== 'devices') return
-    const interval = window.setInterval(() => {
-      void loadDevices()
-    }, 5000)
     const onFocus = () => {
-      if (document.visibilityState !== 'hidden') void loadDevices()
+      if (document.visibilityState !== 'hidden') void loadDevices({ showLoading: false, clearMessage: false })
     }
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onFocus)
     return () => {
-      window.clearInterval(interval)
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onFocus)
     }
@@ -276,7 +271,7 @@ export function UserSettingsPage({ onBack }: Props) {
     if (res.ok) {
       setDeviceMsg(t('settings.deviceDisconnected'))
       setTimeout(() => setDeviceMsg(''), 2000)
-      loadDevices()
+      void loadDevices()
     }
   }
 
@@ -556,11 +551,11 @@ export function UserSettingsPage({ onBack }: Props) {
                 className="h-9 px-3 rounded-xl border border-[var(--color-border)] text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] inline-flex items-center gap-1.5 cursor-pointer"
               >
                 <RefreshCw className={cn('w-3.5 h-3.5', devicesLoading && 'animate-spin')} />
-                {t('common.refresh')}
+                {t('common.reload')}
               </button>
             </div>
 
-            {devicesLoading ? (
+            {devicesLoading && devices.length === 0 ? (
               <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 {t('common.loading')}
