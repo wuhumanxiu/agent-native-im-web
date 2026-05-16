@@ -565,6 +565,7 @@
     "openclawTokenHint": "If you rotate this token, update OpenClaw channels.ani.apiKey, Zebra ANI_API_KEY, or Hermes ANI_API_KEY and reconnect.",
     "rotatedTokenCopied": "The new token has been copied. Replace it in the OpenClaw extension, Zebra adapter, or Hermes adapter config, then reconnect, or copy a fresh access pack below.",
     "copyOpsSnapshot": "Copy Ops Snapshot",
+    "opsAndAccess": "Access & Ops",
     "awaitingApproval": "Awaiting Approval",
     "statusSection": "Status",
     "statusReady": "Ready",

@@ -113,7 +113,9 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
   const [diagnostics, setDiagnostics] = useState<BotDiagnostics | null>(null)
   const [lastSeen, setLastSeen] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | false>(false)
+  const [opsExpanded, setOpsExpanded] = useState(false)
   const [accessPackExpanded, setAccessPackExpanded] = useState(false)
+  const [policyExpanded, setPolicyExpanded] = useState(false)
   const [docExpanded, setDocExpanded] = useState(false)
   const [convsCollapsed, setConvsCollapsed] = useState(false)
   const [rotatingToken, setRotatingToken] = useState(false)
@@ -145,7 +147,9 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
     if (!switchedBot) return
 
     setActiveTab('direct')
+    setOpsExpanded(false)
     setAccessPackExpanded(false)
+    setPolicyExpanded(false)
     setConfirmDisable(false)
     setDocExpanded(false)
     setRotatingToken(false)
@@ -544,21 +548,34 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
           </div>
         )}
 
-        {/* ── Status overview — flat key-value, owner only ── */}
-        {isOwner && (selfCheck || diagnostics) && (
-          <div className="px-5 py-5 border-b border-[var(--color-border)]">
-            <div className="flex items-center justify-between mb-3">
+        {/* ── Low-frequency operations — collapsed by default ── */}
+        {isOwner && (
+          <div className="px-5 py-3 border-b border-[var(--color-border)]">
+            <button
+              onClick={() => setOpsExpanded((v) => !v)}
+              aria-expanded={opsExpanded}
+              className="flex w-full items-center justify-between gap-3 rounded-xl px-1 py-1 text-left cursor-pointer hover:bg-[var(--color-bg-hover)] transition-colors"
+            >
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-[var(--color-accent)]" />
-                <span className="text-sm font-medium text-[var(--color-text-primary)]">{t('bot.statusSection')}</span>
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">{t('bot.opsAndAccess')}</span>
               </div>
-              <span className={cn(
-                'px-2 py-0.5 rounded-full text-xs font-medium',
-                selfCheck?.ready ? 'bg-[var(--color-success)]/12 text-[var(--color-success)]' : 'bg-[var(--color-warning)]/12 text-[var(--color-warning)]',
-              )}>
-                {selfCheck?.ready ? t('bot.statusReady') : t('bot.statusActionNeeded')}
+              <span className="flex items-center gap-2">
+                <span className={cn(
+                  'px-2 py-0.5 rounded-full text-xs font-medium',
+                  selfCheck?.ready ? 'bg-[var(--color-success)]/12 text-[var(--color-success)]' : 'bg-[var(--color-warning)]/12 text-[var(--color-warning)]',
+                )}>
+                  {selfCheck?.ready ? t('bot.statusReady') : t('bot.statusActionNeeded')}
+                </span>
+                <span className="hidden sm:inline text-xs text-[var(--color-text-muted)]">
+                  {diagnostics?.connections ?? 0} {t('bot.connections')}
+                </span>
+                {opsExpanded ? <ChevronUp className="w-4 h-4 text-[var(--color-text-muted)]" /> : <ChevronDown className="w-4 h-4 text-[var(--color-text-muted)]" />}
               </span>
-            </div>
+            </button>
+
+            {opsExpanded && (selfCheck || diagnostics) && (
+              <div className="mt-4">
 
             {/* Flat metrics row */}
             <div className="flex gap-6 text-xs mb-3">
@@ -612,11 +629,13 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
                 {t('bot.regenerateToken')}
               </button>
             </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* ── Access pack — consolidated (owner only) ── */}
-        {isOwner && (accessToken || !showFullCreds) && (
+        {opsExpanded && isOwner && (accessToken || !showFullCreds) && (
           <div className="px-5 py-5 border-b border-[var(--color-border)]">
             <div className="flex items-center gap-2 mb-3">
               <Key className="w-4 h-4 text-[var(--color-accent)]" />
@@ -840,12 +859,33 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
             )}
           </div>
 
-          <div className="mt-5 rounded-2xl border border-[var(--color-accent)]/20 bg-[var(--color-bg-tertiary)] p-4 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <Link className="w-4 h-4 text-[var(--color-accent)]" />
-              <p className="text-sm font-medium text-[var(--color-text-primary)]">{t('friends.botAccessPolicy')}</p>
-            </div>
-            <div className="grid gap-3 xl:grid-cols-3 xl:items-start">
+          <div className="mt-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-3">
+            <button
+              onClick={() => setPolicyExpanded((v) => !v)}
+              aria-expanded={policyExpanded}
+              className="flex w-full items-center justify-between gap-3 rounded-xl px-1 py-1 text-left cursor-pointer hover:bg-[var(--color-bg-hover)] transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <Link className="w-4 h-4 text-[var(--color-accent)]" />
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">{t('friends.botAccessPolicy')}</span>
+              </span>
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="hidden min-w-0 truncate text-xs text-[var(--color-text-muted)] sm:inline">
+                  {policyDraft.discoverability === 'private'
+                    ? t('friends.discoveryPrivate')
+                    : policyDraft.discoverability === 'external_public'
+                      ? t('friends.discoveryExternal')
+                      : t('friends.discoveryPlatform')}
+                  {' · '}
+                  {policyDraft.direct_message_policy === 'platform_entities'
+                    ? t('friends.directMessagePolicyPlatformShort')
+                    : t('friends.directMessagePolicyFriendsOnlyShort')}
+                </span>
+                {policyExpanded ? <ChevronUp className="w-4 h-4 flex-shrink-0 text-[var(--color-text-muted)]" /> : <ChevronDown className="w-4 h-4 flex-shrink-0 text-[var(--color-text-muted)]" />}
+              </span>
+            </button>
+            {policyExpanded && (
+            <div className="mt-3 grid gap-3 xl:grid-cols-3 xl:items-start">
               <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-3">
                 <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)] mb-2">{t('friends.platformVisibility')}</p>
                 <label className="block text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)] mb-1.5">
@@ -997,6 +1037,7 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
                 </div>
               )}
             </div>
+            )}
           </div>
 
           <div className="mt-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-4">
