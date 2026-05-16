@@ -6,9 +6,10 @@ import { useAuthStore } from '@/store/auth'
 import { useConversationsStore } from '@/store/conversations'
 import * as api from '@/lib/api'
 import { loadAddableGroupMembers } from '@/lib/addable-members'
-import type { Conversation, Entity } from '@/lib/types'
+import { buildGroupMemberSections } from '@/lib/group-members'
+import type { Conversation, Entity, Participant } from '@/lib/types'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { X, UserPlus, UserMinus, Bell, BellOff, Crown, Shield, Loader2, Search } from 'lucide-react'
+import { X, UserPlus, UserMinus, Bell, BellOff, Crown, Shield, Loader2, Search, Bot, UserRound } from 'lucide-react'
 
 interface Props {
   conversation: Conversation
@@ -28,6 +29,7 @@ export function GroupMembersPanel({ conversation, onClose, onUpdate }: Props) {
   const [addSearch, setAddSearch] = useState('')
 
   const participants = useMemo(() => conversation.participants || [], [conversation.participants])
+  const memberSections = useMemo(() => buildGroupMemberSections(participants), [participants])
   const myParticipant = participants.find((p) => p.entity_id === myEntity.id)
   const canManage = myParticipant?.role === 'owner' || myParticipant?.role === 'admin'
   const canAddMember = Boolean(myParticipant)
@@ -55,9 +57,12 @@ export function GroupMembersPanel({ conversation, onClose, onUpdate }: Props) {
     onUpdate?.()
   }
 
+  const participantPublicId = (participant?: Participant) => participant?.entity_public_id || participant?.entity?.public_id
+
   const handleRemove = async (entityId: number) => {
     setLoading(true)
-    const res = await api.removeParticipant(token, conversation.id, entityId)
+    const participant = participants.find((item) => item.entity_id === entityId)
+    const res = await api.removeParticipant(token, conversation.id, entityId, participantPublicId(participant))
     if (res.ok) {
       updateConversation(conversation.id, {
         participants: participants.filter((participant) => participant.entity_id !== entityId),
@@ -94,6 +99,65 @@ export function GroupMembersPanel({ conversation, onClose, onUpdate }: Props) {
       <span className={cn('px-1.5 py-0.5 rounded text-[9px] font-medium uppercase', colors[role] || colors.member)}>
         {role}
       </span>
+    )
+  }
+
+  const ownerName = (entity?: Entity) => entity?.owner_display_name || entity?.owner_name || ''
+
+  const renderMemberRow = (p: Participant, options?: { nested?: boolean; orphanBot?: boolean }) => {
+    const isBot = isBotOrService(p.entity)
+    const nested = Boolean(options?.nested)
+    const orphanBot = Boolean(options?.orphanBot)
+    return (
+      <div
+        key={p.entity_id}
+        className={cn(
+          'flex items-center gap-3 px-5 py-2.5 hover:bg-[var(--color-bg-hover)] transition-colors group',
+          nested && 'pl-9 py-2',
+        )}
+      >
+        <div className="relative">
+          {nested && (
+            <span className="absolute -left-4 top-1/2 h-px w-2.5 bg-[var(--color-border)]" aria-hidden="true" />
+          )}
+          <EntityAvatar entity={p.entity} size={nested ? 'xs' : 'sm'} showStatus />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            {!nested && roleIcon(p.role)}
+            {isBot ? (
+              <Bot className="w-3 h-3 text-[var(--color-bot)] flex-shrink-0" />
+            ) : (
+              <UserRound className="w-3 h-3 text-[var(--color-text-muted)] flex-shrink-0" />
+            )}
+            <span className={cn(
+              'text-sm font-medium text-[var(--color-text-primary)] truncate',
+              nested && 'text-[13px]',
+            )}>
+              {entityDisplayName(p.entity)}
+            </span>
+            {p.entity_id === myEntity.id && (
+              <span className="text-[9px] text-[var(--color-text-muted)]">{t('common.you')}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+            <span className="text-[10px] text-[var(--color-text-muted)] truncate">@{p.entity?.name}</span>
+            {!nested && roleBadge(p.role)}
+            {orphanBot && ownerName(p.entity) && (
+              <span className="text-[10px] text-[var(--color-text-muted)] truncate">{ownerName(p.entity)}</span>
+            )}
+          </div>
+        </div>
+        {canManage && p.entity_id !== myEntity.id && p.role !== 'owner' && (
+          <button
+            onClick={() => setRemoveMemberId(p.entity_id)}
+            className="w-7 h-7 rounded-lg hover:bg-[var(--color-error)]/15 flex items-center justify-center cursor-pointer transition-colors opacity-0 group-hover:opacity-100"
+            title={t('common.removeMember')}
+          >
+            <UserMinus className="w-3.5 h-3.5 text-[var(--color-text-muted)] hover:text-[var(--color-error)]" />
+          </button>
+        )}
+      </div>
     )
   }
 
@@ -140,35 +204,21 @@ export function GroupMembersPanel({ conversation, onClose, onUpdate }: Props) {
 
         {/* Members list */}
         <div className="max-h-72 overflow-y-auto">
-          {participants.map((p) => (
-            <div key={p.entity_id} className="flex items-center gap-3 px-5 py-2.5 hover:bg-[var(--color-bg-hover)] transition-colors group">
-              <EntityAvatar entity={p.entity} size="sm" showStatus />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  {roleIcon(p.role)}
-                  <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                    {entityDisplayName(p.entity)}
-                  </span>
-                  {p.entity_id === myEntity.id && (
-                    <span className="text-[9px] text-[var(--color-text-muted)]">{t('common.you')}</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[10px] text-[var(--color-text-muted)]">@{p.entity?.name}</span>
-                  {roleBadge(p.role)}
-                </div>
-              </div>
-              {canManage && p.entity_id !== myEntity.id && p.role !== 'owner' && (
-                <button
-                  onClick={() => setRemoveMemberId(p.entity_id)}
-                  className="w-7 h-7 rounded-lg hover:bg-[var(--color-error)]/15 flex items-center justify-center cursor-pointer transition-colors opacity-0 group-hover:opacity-100"
-                  title={t('common.removeMember')}
-                >
-                  <UserMinus className="w-3.5 h-3.5 text-[var(--color-text-muted)] hover:text-[var(--color-error)]" />
-                </button>
-              )}
+          {memberSections.owners.map(({ owner, bots }) => (
+            <div key={owner.entity_id}>
+              {renderMemberRow(owner)}
+              {bots.map((bot) => renderMemberRow(bot, { nested: true }))}
             </div>
           ))}
+          {memberSections.orphanBots.length > 0 && (
+            <div className="pt-1">
+              <div className="flex items-center gap-2 px-5 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                <span>{t('composer.mentionBots')}</span>
+                <span className="h-px flex-1 bg-[var(--color-border)]" />
+              </div>
+              {memberSections.orphanBots.map((bot) => renderMemberRow(bot, { orphanBot: true }))}
+            </div>
+          )}
         </div>
 
         {/* Add member */}

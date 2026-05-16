@@ -10,11 +10,12 @@ import { MemorySection } from '@/components/conversation/MemorySection'
 import { InviteLinkSection } from '@/components/conversation/InviteLinkSection'
 import * as api from '@/lib/api'
 import { loadAddableGroupMembers } from '@/lib/addable-members'
-import type { Conversation, Entity } from '@/lib/types'
+import { buildGroupMemberSections } from '@/lib/group-members'
+import type { Conversation, Entity, Participant } from '@/lib/types'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
   X, UserMinus, UserPlus, Bell, BellOff, Crown, Shield, Eye,
-  Pencil, Check, LogOut, Archive, VolumeX, Volume2, Loader2, Copy, ArrowLeft, Search,
+  Pencil, Check, LogOut, Archive, VolumeX, Volume2, Loader2, Copy, ArrowLeft, Search, Bot, UserRound,
 } from 'lucide-react'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
@@ -53,6 +54,7 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
   const displayConversationId = (typeof publicId === 'string' && publicId) || conversation.public_id || ''
 
   const participants = conversation.participants || []
+  const memberSections = useMemo(() => buildGroupMemberSections(participants), [participants])
   const myParticipant = participants.find((p) => p.entity_id === myEntity.id)
   const canManage = myParticipant?.role === 'owner' || myParticipant?.role === 'admin'
   const canAddMember = Boolean(myParticipant)
@@ -115,8 +117,11 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
     // Refresh happens through parent via websocket events
   }
 
+  const participantPublicId = (participant?: Participant) => participant?.entity_public_id || participant?.entity?.public_id
+
   const handleRemoveMember = async (entityId: number) => {
-    const res = await api.removeParticipant(token, conversation.id, entityId)
+    const participant = participants.find((item) => item.entity_id === entityId)
+    const res = await api.removeParticipant(token, conversation.id, entityId, participantPublicId(participant))
     if (res.ok) {
       updateConversation(conversation.id, {
         participants: participants.filter((participant) => participant.entity_id !== entityId),
@@ -153,6 +158,75 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
     if (role === 'admin') return <Shield className="w-3 h-3 text-blue-400" />
     if (role === 'observer') return <Eye className="w-3 h-3 text-[var(--color-text-muted)]" />
     return null
+  }
+
+  const ownerName = (entity?: Entity) => entity?.owner_display_name || entity?.owner_name || ''
+
+  const renderMemberRow = (p: Participant, options?: { nested?: boolean; orphanBot?: boolean }) => {
+    const nested = Boolean(options?.nested)
+    const orphanBot = Boolean(options?.orphanBot)
+    const isBot = isBotOrService(p.entity)
+
+    return (
+      <div
+        key={p.entity_id}
+        className={cn(
+          'flex items-center gap-2.5 py-1.5 group',
+          nested && 'pl-4 py-1',
+        )}
+      >
+        <div className="relative">
+          {nested && (
+            <span className="absolute -left-3 top-1/2 h-px w-2 bg-[var(--color-border)]" aria-hidden="true" />
+          )}
+          <EntityAvatar entity={p.entity} size="xs" />
+          {online.has(p.entity_id) && (
+            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[var(--color-success)] border-2 border-[var(--color-bg-secondary)]" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1">
+            {!nested && roleIcon(p.role)}
+            {isBot ? (
+              <Bot className="w-3 h-3 text-[var(--color-bot)] flex-shrink-0" />
+            ) : (
+              <UserRound className="w-3 h-3 text-[var(--color-text-muted)] flex-shrink-0" />
+            )}
+            <span className={cn(
+              'text-xs font-medium text-[var(--color-text-primary)] truncate',
+              nested && 'text-[11px]',
+            )}>
+              {entityDisplayName(p.entity)}
+            </span>
+            {p.entity_id === myEntity.id && (
+              <span className="text-[9px] text-[var(--color-text-muted)]">{t('common.you')}</span>
+            )}
+          </div>
+          {orphanBot && ownerName(p.entity) && (
+            <div className="text-[9px] text-[var(--color-text-muted)] truncate mt-0.5">{ownerName(p.entity)}</div>
+          )}
+        </div>
+        {canManage && p.entity_id !== myEntity.id && p.role !== 'owner' && !isArchived && (
+          <select
+            value={p.role}
+            onChange={(e) => api.updateParticipantRole(token, conversation.id, p.entity_id, e.target.value, participantPublicId(p))}
+            className="text-[9px] px-1 py-0.5 rounded bg-[var(--color-bg-input)] border border-[var(--color-border)] text-[var(--color-text-muted)] cursor-pointer focus:outline-none opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <option value="admin">{t('settings.roleAdmin')}</option>
+            <option value="member">{t('settings.roleMember')}</option>
+            <option value="observer">{t('settings.roleObserver')}</option>
+          </select>
+        )}
+        {canManage && p.entity_id !== myEntity.id && p.role !== 'owner' && !isArchived && (
+          <button
+            onClick={() => setRemoveMemberId(p.entity_id)}
+            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[var(--color-error)]/15 rounded cursor-pointer transition-opacity"
+          >
+            <UserMinus className="w-3 h-3 text-[var(--color-text-muted)]" />
+          </button>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -348,46 +422,21 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
             {t('settings.members')} ({participants.length})
           </label>
           <div className="mt-2 space-y-1">
-            {participants.map((p) => (
-              <div key={p.entity_id} className="flex items-center gap-2.5 py-1.5 group">
-                <div className="relative">
-                  <EntityAvatar entity={p.entity} size="xs" />
-                  {online.has(p.entity_id) && (
-                    <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[var(--color-success)] border-2 border-[var(--color-bg-secondary)]" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1">
-                    {roleIcon(p.role)}
-                    <span className="text-xs font-medium text-[var(--color-text-primary)] truncate">
-                      {entityDisplayName(p.entity)}
-                    </span>
-                    {p.entity_id === myEntity.id && (
-                      <span className="text-[9px] text-[var(--color-text-muted)]">{t('common.you')}</span>
-                    )}
-                  </div>
-                </div>
-                {canManage && p.entity_id !== myEntity.id && p.role !== 'owner' && !isArchived && (
-                  <select
-                    value={p.role}
-                    onChange={(e) => api.updateParticipantRole(token, conversation.id, p.entity_id, e.target.value)}
-                    className="text-[9px] px-1 py-0.5 rounded bg-[var(--color-bg-input)] border border-[var(--color-border)] text-[var(--color-text-muted)] cursor-pointer focus:outline-none opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <option value="admin">{t('settings.roleAdmin')}</option>
-                    <option value="member">{t('settings.roleMember')}</option>
-                    <option value="observer">{t('settings.roleObserver')}</option>
-                  </select>
-                )}
-                {canManage && p.entity_id !== myEntity.id && p.role !== 'owner' && !isArchived && (
-                  <button
-                    onClick={() => setRemoveMemberId(p.entity_id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[var(--color-error)]/15 rounded cursor-pointer transition-opacity"
-                  >
-                    <UserMinus className="w-3 h-3 text-[var(--color-text-muted)]" />
-                  </button>
-                )}
+            {memberSections.owners.map(({ owner, bots }) => (
+              <div key={owner.entity_id}>
+                {renderMemberRow(owner)}
+                {bots.map((bot) => renderMemberRow(bot, { nested: true }))}
               </div>
             ))}
+            {memberSections.orphanBots.length > 0 && (
+              <div className="pt-1">
+                <div className="flex items-center gap-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                  <span>{t('composer.mentionBots')}</span>
+                  <span className="h-px flex-1 bg-[var(--color-border)]" />
+                </div>
+                {memberSections.orphanBots.map((bot) => renderMemberRow(bot, { orphanBot: true }))}
+              </div>
+            )}
           </div>
 
           {/* Add member inline */}

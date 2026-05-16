@@ -20,6 +20,9 @@ export interface Entity {
   require_access_password?: boolean
   metadata: Record<string, unknown>
   owner_id?: number
+  owner_public_id?: string
+  owner_name?: string
+  owner_display_name?: string
   created_at: string
   updated_at: string
 }
