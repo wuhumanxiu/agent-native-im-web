@@ -4,7 +4,7 @@ import { cn, entityDisplayName, formatRelativeTime, truncate, isBotOrService } f
 import { EntityAvatar } from '@/components/entity/EntityAvatar'
 import { useConversationsStore } from '@/store/conversations'
 import type { Conversation } from '@/lib/types'
-import { Bot, MessagesSquare, Pencil, Check, X, VolumeX, LogOut, Archive, Pin, PinOff, User } from 'lucide-react'
+import { Bot, MessagesSquare, Pencil, Check, X, VolumeX, LogOut, Archive, Pin, PinOff } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import * as api from '@/lib/api'
 
@@ -127,13 +127,7 @@ export function ConversationItem({ conv, active, myEntityId, onClick, onUpdate, 
     : directIsBot
       ? 'bot'
       : 'human'
-  const chatKindLabel = chatKind === 'mixed'
-    ? t('conversation.chatKindMixed')
-    : chatKind === 'agent'
-      ? t('conversation.chatKindAgent')
-      : chatKind === 'bot'
-        ? t('conversation.chatKindBot')
-        : t('conversation.chatKindHuman')
+  const hasBotParticipant = chatKind !== 'human'
   const lastMsg = conv.last_message
   const lastText = lastMsg?.layers?.summary || (lastMsg?.content_type === 'image' ? '[Image]' : lastMsg?.content_type === 'file' ? '[File]' : lastMsg?.content_type === 'audio' ? '[Audio]' : '')
   const hasUnread = !muted && (conv.unread_count || 0) > 0
@@ -226,17 +220,13 @@ export function ConversationItem({ conv, active, myEntityId, onClick, onUpdate, 
                 {muted && <VolumeX className="w-3 h-3 text-[var(--color-text-muted)] flex-shrink-0" />}
               </span>
             )}
-            {!isEditing && (
-              <span className={cn(
-                'hidden sm:inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-medium flex-shrink-0',
-                chatKind === 'human'
-                  ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]'
-                  : chatKind === 'bot' || chatKind === 'agent'
-                    ? 'bg-[var(--color-bot)]/10 text-[var(--color-bot)]'
-                    : 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]',
-              )}>
-                {chatKind === 'human' ? <User className="w-2.5 h-2.5" /> : <Bot className="w-2.5 h-2.5" />}
-                {chatKindLabel}
+            {!isEditing && hasBotParticipant && (
+              <span
+                className="hidden sm:inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-bot)]/10 text-[var(--color-bot)] ring-1 ring-[var(--color-bot)]/20 flex-shrink-0"
+                title={t('conversation.chatKindBot')}
+                aria-label={t('conversation.chatKindBot')}
+              >
+                <Bot className="w-3 h-3" />
               </span>
             )}
             {!isEditing ? (

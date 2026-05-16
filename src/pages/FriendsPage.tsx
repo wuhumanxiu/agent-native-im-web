@@ -53,8 +53,9 @@ export function FriendsPage() {
   const actingEntity = actingOptions.find((item) => item.id === actingEntityId) || me
   const friendsCacheKey = actingEntity.public_id || String(actingEntityId)
 
-  const loadSocial = useCallback(async () => {
-    setLoading(true)
+  const loadSocial = useCallback(async (options?: { background?: boolean }) => {
+    const background = Boolean(options?.background)
+    if (!background) setLoading(true)
     const [friendsRes, incomingRes, outgoingRes] = await Promise.all([
       api.listFriends(token, actingEntity.public_id ? undefined : actingEntityId, actingEntity.public_id),
       api.listFriendRequests(token, { entityId: actingEntity.public_id ? undefined : actingEntityId, publicId: actingEntity.public_id, direction: 'incoming', status: 'pending' }),
@@ -86,20 +87,23 @@ export function FriendsPage() {
         updated_at: new Date().toISOString(),
       })
     }
-    setLoading(false)
+    if (!background) setLoading(false)
   }, [actingEntity.public_id, actingEntityId, friendsCacheKey, setPresenceBatch, setPresenceUnknown, token])
 
   useEffect(() => {
     let cancelled = false
     void getCachedFriendsSnapshot(friendsCacheKey).then((snapshot) => {
-      if (cancelled || !snapshot) return
+      if (cancelled) return
+      if (!snapshot) {
+        void loadSocial()
+        return
+      }
       setFriends(snapshot.friends || [])
       setIncoming(snapshot.incoming || [])
       setOutgoing(snapshot.outgoing || [])
       setLoading(false)
       setShowCachedSnapshot(true)
-    }).finally(() => {
-      if (!cancelled) void loadSocial()
+      void loadSocial({ background: true })
     })
     return () => { cancelled = true }
   }, [friendsCacheKey, inboxDirtyVersion, loadSocial])
@@ -107,7 +111,7 @@ export function FriendsPage() {
   useEffect(() => {
     const onFocus = () => {
       if (document.visibilityState === 'hidden') return
-      void loadSocial()
+      void loadSocial({ background: true })
     }
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onFocus)
