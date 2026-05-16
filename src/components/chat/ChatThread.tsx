@@ -4,6 +4,7 @@ import { MessageList } from './MessageList'
 import { MessageComposer, type UploadedAttachment } from './MessageComposer'
 import { GroupMembersPanel } from '@/components/conversation/GroupMembersPanel'
 import { EntityAvatar } from '@/components/entity/EntityAvatar'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useAuthStore } from '@/store/auth'
 import { useMessagesStore } from '@/store/messages'
 import { usePresenceStore } from '@/store/presence'
@@ -63,6 +64,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
   const [showMembers, setShowMembers] = useState(false)
   const [replyTo, setReplyTo] = useState<Message | null>(null)
   const [editPrefill, setEditPrefill] = useState<{ id: number; text: string } | null>(null)
+  const [showRevokeNotice, setShowRevokeNotice] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [debugCopied, setDebugCopied] = useState(false)
   const [debugLogged, setDebugLogged] = useState(false)
@@ -649,7 +651,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
       revokeMessage(conversation.id, msgId)
       if (!localStorage.getItem(REVOKE_NOTICE_KEY)) {
         localStorage.setItem(REVOKE_NOTICE_KEY, '1')
-        window.alert(t('message.revokeNotice'))
+        setShowRevokeNotice(true)
       }
     }
   }, [token, conversation.id, isArchived, revokeMessage, t])
@@ -1118,6 +1120,14 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
         onCancelReply={() => setReplyTo(null)}
         targetBot={composerTargetBot}
         editPrefill={editPrefill}
+      />
+      <ConfirmDialog
+        open={showRevokeNotice}
+        title={t('message.revokeNoticeTitle')}
+        message={t('message.revokeNotice')}
+        confirmLabel={t('common.confirm')}
+        onConfirm={() => setShowRevokeNotice(false)}
+        onCancel={() => setShowRevokeNotice(false)}
       />
     </div>
   )

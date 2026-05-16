@@ -471,6 +471,7 @@
     "voiceMessage": "语音消息 ({{duration}}s)",
     "revoke": "撤回消息",
     "editRecalled": "编辑后重发",
+    "revokeNoticeTitle": "撤回说明",
     "revokeNotice": "提示：撤回只会从 ANI 会话中撤回这条文本展示，不能中断 AI agent 已经开始执行的任务。部分 AI agent 支持专门的中断指令，但这由 agent 自己决定。",
     "thinking": "思考过程",
     "replyTo": "回复消息 #{{id}}",

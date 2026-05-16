@@ -471,6 +471,7 @@
     "voiceMessage": "Voice message ({{duration}}s)",
     "revoke": "Revoke message",
     "editRecalled": "Edit and resend",
+    "revokeNoticeTitle": "About message recall",
     "revokeNotice": "Note: revoking only removes this text from the ANI conversation display. It does not stop work an AI agent has already started. Some AI agents support their own interrupt commands, but that is decided by the agent.",
     "thinking": "Thinking",
     "replyTo": "Replying to message #{{id}}",
