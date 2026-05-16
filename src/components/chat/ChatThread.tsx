@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessageList } from './MessageList'
-import { MessageComposer, type UploadedAttachment } from './MessageComposer'
+import { MessageComposer, type ComposerEditPrefill, type UploadedAttachment } from './MessageComposer'
 import { GroupMembersPanel } from '@/components/conversation/GroupMembersPanel'
 import { EntityAvatar } from '@/components/entity/EntityAvatar'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -18,7 +18,7 @@ import { SkeletonLoader } from '@/components/ui/SkeletonLoader'
 import { Search, Users, ArrowLeft, Loader2, X, Settings, ListTodo, Bug, Check, Contact, Send } from 'lucide-react'
 import { useSettingsStore } from '@/store/settings'
 import { inspectChatBubbles, copyToClipboard } from '@/lib/layout-inspector'
-import { getEditableRecalledMessageText } from './recalled-message'
+import { getRecalledDraft } from './recalled-message'
 
 const EMPTY_MESSAGES: Message[] = []
 const REVOKE_NOTICE_KEY = 'ani:revoke-notice:v1'
@@ -63,7 +63,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
   const [searchLoading, setSearchLoading] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
   const [replyTo, setReplyTo] = useState<Message | null>(null)
-  const [editPrefill, setEditPrefill] = useState<{ id: number; text: string } | null>(null)
+  const [editPrefill, setEditPrefill] = useState<ComposerEditPrefill | null>(null)
   const [showRevokeNotice, setShowRevokeNotice] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [debugCopied, setDebugCopied] = useState(false)
@@ -657,11 +657,11 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
   }, [token, conversation.id, isArchived, revokeMessage, t])
 
   const handleEditRecalled = useCallback((msg: Message) => {
-    const text = getEditableRecalledMessageText(msg)
-    if (!text) return
+    const draft = getRecalledDraft(msg, conversation.participants)
+    if (!draft) return
     setReplyTo(null)
-    setEditPrefill({ id: msg.id, text })
-  }, [])
+    setEditPrefill({ id: msg.id, ...draft })
+  }, [conversation.participants])
 
   const handleReact = useCallback(async (msgId: number, emoji: string) => {
     const res = await api.toggleReaction(token, msgId, emoji)

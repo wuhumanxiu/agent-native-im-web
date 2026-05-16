@@ -19,6 +19,14 @@ export interface PendingFile {
   url?: string
 }
 
+export interface ComposerEditPrefill {
+  id: number
+  text: string
+  attachments?: PendingFile[]
+  mentionIds?: number[]
+  assignedMentionIds?: number[]
+}
+
 /** Pre-uploaded attachment — stricter subset of Attachment with all fields required. */
 export type UploadedAttachment = Required<Pick<Attachment, 'type' | 'url' | 'filename' | 'mime_type' | 'size'>>
 
@@ -37,7 +45,7 @@ interface Props {
   onCancelReply?: () => void
   attachmentsEnabled?: boolean
   targetBot?: Entity | null
-  editPrefill?: { id: number; text: string } | null
+  editPrefill?: ComposerEditPrefill | null
 }
 
 interface DraftReplyPreview {
@@ -257,9 +265,9 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
   useEffect(() => {
     if (!editPrefill) return
     setText(editPrefill.text)
-    setPendingFiles([])
-    setMentionIds([])
-    setAssignedMentionIds([])
+    setPendingFiles(editPrefill.attachments || [])
+    setMentionIds(editPrefill.mentionIds || [])
+    setAssignedMentionIds((editPrefill.assignedMentionIds || []).filter((id) => (editPrefill.mentionIds || []).includes(id)))
     setMentionQuery(null)
     setMentionStart(-1)
     queueMicrotask(() => {

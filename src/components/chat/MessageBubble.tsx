@@ -14,7 +14,7 @@ import { HandoverCard } from './HandoverCard'
 import { ImageLightbox } from '@/components/ui/ImageLightbox'
 import { MessageActionMenu } from '@/components/ui/MessageActionMenu'
 import { getSelectedMessageCopyText } from './message-copy'
-import { getEditableRecalledMessageText } from './recalled-message'
+import { getRecalledDraft } from './recalled-message'
 import type { Entity, EntityCardPayload, Message } from '@/lib/types'
 import { ReactionBar } from './ReactionBar'
 import {
@@ -332,8 +332,7 @@ export function MessageBubble({ message, isSelf, myEntityId, replyMessage, inter
 
   // Revoked message
   if (isRevoked) {
-    const editableText = getEditableRecalledMessageText(message)
-    const canEditRecalled = isSelf && !!editableText && !!onEditRecalled
+    const canEditRecalled = isSelf && !!getRecalledDraft(message) && !!onEditRecalled
     return (
       <div className="flex justify-center py-1">
         <span className="text-[11px] text-[var(--color-text-muted)] italic flex items-center gap-1">
