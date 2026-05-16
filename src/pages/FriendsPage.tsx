@@ -12,8 +12,8 @@ import { EntityAvatar } from '@/components/entity/EntityAvatar'
 import { EntityPopoverCard } from '@/components/entity/EntityPopoverCard'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { entityDisplayName, cn, isBotOrService } from '@/lib/utils'
-import { openOrCreateDirectConversation, conversationRouteFor, findExistingDirectConversation } from '@/lib/direct-conversation'
-import { Bot, Contact, Loader2, Search, UserPlus, UserCheck, X, Users, SendHorizonal, MessageSquare, RotateCcw, Send } from 'lucide-react'
+import { openOrCreateDirectConversation, conversationRouteFor } from '@/lib/direct-conversation'
+import { Bot, Contact, Loader2, Search, UserPlus, UserCheck, X, Users, SendHorizonal, Send } from 'lucide-react'
 import { usePresenceStore } from '@/store/presence'
 
 type Tab = 'friends' | 'requests'
@@ -451,75 +451,30 @@ export function FriendsPage() {
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {friends.map((entity) => {
                 const isBot = isBotOrService(entity)
-                const existingDirect = findExistingDirectConversation(conversations, me.id, entity.id)
-                const primaryLabel = isBot ? t('friends.newBotChat') : t('friends.message')
                 return (
-                  <article
+                  <button
+                    type="button"
                     key={entity.id}
-                    className="group relative overflow-hidden rounded-[22px] bg-[var(--color-bg-secondary)] p-4 ring-1 ring-[var(--color-border)]/70 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--color-bg-hover)] hover:ring-[var(--color-accent)]/25 hover:shadow-md"
+                    onClick={(e) => {
+                      setPopoverEntity(entity)
+                      setPopoverAnchor((e.currentTarget as HTMLElement).getBoundingClientRect())
+                    }}
+                    className="group relative overflow-hidden rounded-[22px] bg-[var(--color-bg-secondary)] p-4 text-left ring-1 ring-[var(--color-border)]/70 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--color-bg-hover)] hover:ring-[var(--color-accent)]/25 hover:shadow-md cursor-pointer"
                   >
                     <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-[var(--color-accent)]/30 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
                     <div className="flex items-start gap-3">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          setPopoverEntity(entity)
-                          setPopoverAnchor((e.currentTarget as HTMLElement).getBoundingClientRect())
-                        }}
-                        className="flex-shrink-0 cursor-pointer"
-                        aria-label={entityDisplayName(entity)}
-                      >
+                      <div className="flex-shrink-0">
                         <EntityAvatar entity={entity} size="md" showStatus />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          setPopoverEntity(entity)
-                          setPopoverAnchor((e.currentTarget as HTMLElement).getBoundingClientRect())
-                        }}
-                        className="min-w-0 flex-1 text-left cursor-pointer"
-                      >
+                      </div>
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{entityDisplayName(entity)}</span>
                           {isBot && <Bot className="h-3.5 w-3.5 flex-shrink-0 text-[var(--color-text-muted)]" />}
                         </div>
                         <div className="mt-0.5 truncate text-xs text-[var(--color-text-muted)]">{secondaryLabelOf(entity)}</div>
-                      </button>
+                      </div>
                     </div>
-
-                    <div className="mt-4 flex items-center gap-2">
-                      <button
-                        onClick={() => void handleOpenDirect(entity, isBot ? 'new' : 'existing')}
-                        disabled={submittingId === entity.id}
-                        aria-label={primaryLabel}
-                        title={primaryLabel}
-                        className="h-9 min-w-0 flex-1 rounded-xl bg-[var(--color-accent)] px-3 text-xs font-medium text-white cursor-pointer inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
-                      >
-                        {submittingId === entity.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
-                        <span className="truncate">{primaryLabel}</span>
-                      </button>
-                      {isBot && existingDirect && (
-                        <button
-                          onClick={() => void handleOpenDirect(entity, 'existing')}
-                          disabled={submittingId === entity.id}
-                          aria-label={t('friends.continueBotChat')}
-                          title={t('friends.continueBotChat')}
-                          className="h-9 w-9 rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-primary)] cursor-pointer inline-flex items-center justify-center disabled:opacity-50"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setShareCardEntity(entity)}
-                        disabled={shareCardSendingId !== null}
-                        aria-label={t('entityPopover.shareCard')}
-                        title={t('entityPopover.shareCard')}
-                        className="h-9 w-9 rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-primary)] cursor-pointer inline-flex items-center justify-center disabled:opacity-50"
-                      >
-                        <Contact className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </article>
+                  </button>
                 )
               })}
             </div>
