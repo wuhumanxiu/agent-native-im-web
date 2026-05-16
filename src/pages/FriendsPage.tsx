@@ -355,12 +355,6 @@ export function FriendsPage() {
           </button>
         </div>
         <p className="mt-2 text-xs text-[var(--color-text-muted)]">{t('friends.searchHelp')}</p>
-        {showCachedSnapshot && (
-          <p className="mt-2 rounded-xl bg-[var(--color-bg-primary)] border border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-text-muted)]">
-            {t('friends.cachedSnapshot')}
-          </p>
-        )}
-
         {searchedQuery && (
           <div className="mt-3 grid gap-2">
             {discoverable.length === 0 ? (
@@ -421,19 +415,31 @@ export function FriendsPage() {
       </div>
 
       <div className="px-6 pt-4">
-        <div className="inline-flex rounded-2xl bg-[var(--color-bg-secondary)] p-1 border border-[var(--color-border)]">
-          {(['friends', 'requests'] as Tab[]).map((key) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={cn(
-                'h-9 px-4 rounded-xl text-sm font-medium cursor-pointer transition-colors',
-                tab === key ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
-              )}
-            >
-              {key === 'friends' ? t('friends.friendsTab', { count: friends.length }) : t('friends.requestsTab', { count: incoming.length + outgoing.length })}
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-2xl bg-[var(--color-bg-secondary)] p-1 border border-[var(--color-border)]">
+            {(['friends', 'requests'] as Tab[]).map((key) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={cn(
+                  'h-9 px-4 rounded-xl text-sm font-medium cursor-pointer transition-colors',
+                  tab === key ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
+                )}
+              >
+                {key === 'friends' ? t('friends.friendsTab', { count: friends.length }) : t('friends.requestsTab', { count: incoming.length + outgoing.length })}
+              </button>
+            ))}
+          </div>
+          <span
+            className={cn(
+              'inline-flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-muted)] transition-opacity',
+              showCachedSnapshot ? 'opacity-100' : 'opacity-0',
+            )}
+            aria-live="polite"
+            aria-label={showCachedSnapshot ? t('friends.syncing') : undefined}
+          >
+            {showCachedSnapshot && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          </span>
         </div>
       </div>
 

@@ -117,6 +117,7 @@
     "searchAction": "Search",
     "searchHelp": "Search runs only after clicking the button or pressing Enter, and matches exact values only.",
     "cachedSnapshot": "Showing local cache while syncing the latest friends and requests.",
+    "syncing": "Syncing",
     "noResults": "No exact-match entity found",
     "add": "Add",
     "friend": "Friend",
