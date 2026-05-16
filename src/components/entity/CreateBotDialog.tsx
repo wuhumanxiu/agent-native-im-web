@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/store/auth'
 import { useIsMobile } from '@/hooks/useIsMobile'
@@ -14,6 +14,16 @@ interface Props {
   onCreated: (result: { entity: Entity; key: string; doc: string }) => void
 }
 
+const CREATE_BOT_DRAFT_KEY = 'create_bot_dialog_draft'
+
+interface CreateBotDraft {
+  name?: string
+  botId?: string
+  description?: string
+  tags?: string
+  avatarUrl?: string
+}
+
 export function CreateBotDialog({ onClose, onCreated }: Props) {
   const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)!
@@ -27,6 +37,35 @@ export function CreateBotDialog({ onClose, onCreated }: Props) {
   const autoApprove = true
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CREATE_BOT_DRAFT_KEY)
+      if (!raw) return
+      const draft = JSON.parse(raw) as CreateBotDraft
+      setName(draft.name || '')
+      setBotId(draft.botId || '')
+      setDescription(draft.description || '')
+      setTags(draft.tags || '')
+      setAvatarUrl(draft.avatarUrl || '')
+    } catch {
+      localStorage.removeItem(CREATE_BOT_DRAFT_KEY)
+    }
+  }, [])
+
+  useEffect(() => {
+    const draft: CreateBotDraft = { name, botId, description, tags, avatarUrl }
+    const hasDraft = Object.values(draft).some((value) => Boolean(value?.trim()))
+    try {
+      if (hasDraft) {
+        localStorage.setItem(CREATE_BOT_DRAFT_KEY, JSON.stringify(draft))
+      } else {
+        localStorage.removeItem(CREATE_BOT_DRAFT_KEY)
+      }
+    } catch {
+      // Ignore storage quota/private-mode failures; the form still works in memory.
+    }
+  }, [avatarUrl, botId, description, name, tags])
 
   const normalizedBotId = botId.trim()
   const botIdValid = /^bot_[a-z0-9][a-z0-9_-]{2,63}$/.test(normalizedBotId)
@@ -58,6 +97,7 @@ export function CreateBotDialog({ onClose, onCreated }: Props) {
           const avatarRes = await api.updateEntity(token, entity.id, { avatar_url: avatarUrl })
           if (avatarRes.ok && avatarRes.data) entity = avatarRes.data
         }
+        localStorage.removeItem(CREATE_BOT_DRAFT_KEY)
         onCreated({ entity, key: res.data.api_key || res.data.bootstrap_key || '', doc: res.data.markdown_doc })
       } else {
         const parsed = extractError(res)
@@ -174,7 +214,7 @@ export function CreateBotDialog({ onClose, onCreated }: Props) {
 
   // Desktop: centered dialog
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div
         className="w-full max-w-md bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-2xl shadow-2xl shadow-black/30 overflow-hidden"
         onClick={(e) => e.stopPropagation()}

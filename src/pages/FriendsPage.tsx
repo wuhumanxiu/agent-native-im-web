@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth'
 import { useConversationsStore } from '@/store/conversations'
 import { useNotificationsStore } from '@/store/notifications'
 import * as api from '@/lib/api'
+import { cacheFriendsSnapshot, getCachedFriendsSnapshot } from '@/lib/cache'
 import type { Entity, FriendRequest } from '@/lib/types'
 import { EntityAvatar } from '@/components/entity/EntityAvatar'
 import { EntityPopoverCard } from '@/components/entity/EntityPopoverCard'
@@ -37,6 +38,7 @@ export function FriendsPage() {
   const [query, setQuery] = useState('')
   const [searchedQuery, setSearchedQuery] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showCachedSnapshot, setShowCachedSnapshot] = useState(false)
   const [searching, setSearching] = useState(false)
   const [submittingId, setSubmittingId] = useState<number | null>(null)
   const [popoverEntity, setPopoverEntity] = useState<Entity | null>(null)
@@ -49,6 +51,7 @@ export function FriendsPage() {
     return actingEntities
   }, [actingEntities, me])
   const actingEntity = actingOptions.find((item) => item.id === actingEntityId) || me
+  const friendsCacheKey = actingEntity.public_id || String(actingEntityId)
 
   const loadSocial = useCallback(async () => {
     setLoading(true)
@@ -59,6 +62,7 @@ export function FriendsPage() {
     ])
     if (friendsRes.ok && friendsRes.data) {
       setFriends(friendsRes.data)
+      setShowCachedSnapshot(false)
       const friendIds = friendsRes.data.map((entity) => entity.id)
       const friendPublicIds = friendsRes.data.map((entity) => entity.public_id).filter((value): value is string => !!value)
       if (friendIds.length > 0) {
@@ -74,12 +78,31 @@ export function FriendsPage() {
     }
     if (incomingRes.ok && incomingRes.data) setIncoming(incomingRes.data)
     if (outgoingRes.ok && outgoingRes.data) setOutgoing(outgoingRes.data)
+    if (friendsRes.ok && friendsRes.data && incomingRes.ok && incomingRes.data && outgoingRes.ok && outgoingRes.data) {
+      void cacheFriendsSnapshot(friendsCacheKey, {
+        friends: friendsRes.data,
+        incoming: incomingRes.data,
+        outgoing: outgoingRes.data,
+        updated_at: new Date().toISOString(),
+      })
+    }
     setLoading(false)
-  }, [actingEntity.public_id, actingEntityId, setPresenceBatch, setPresenceUnknown, token])
+  }, [actingEntity.public_id, actingEntityId, friendsCacheKey, setPresenceBatch, setPresenceUnknown, token])
 
   useEffect(() => {
-    void loadSocial()
-  }, [inboxDirtyVersion, loadSocial])
+    let cancelled = false
+    void getCachedFriendsSnapshot(friendsCacheKey).then((snapshot) => {
+      if (cancelled || !snapshot) return
+      setFriends(snapshot.friends || [])
+      setIncoming(snapshot.incoming || [])
+      setOutgoing(snapshot.outgoing || [])
+      setLoading(false)
+      setShowCachedSnapshot(true)
+    }).finally(() => {
+      if (!cancelled) void loadSocial()
+    })
+    return () => { cancelled = true }
+  }, [friendsCacheKey, inboxDirtyVersion, loadSocial])
 
   useEffect(() => {
     const onFocus = () => {
@@ -266,6 +289,11 @@ export function FriendsPage() {
           </button>
         </div>
         <p className="mt-2 text-xs text-[var(--color-text-muted)]">{t('friends.searchHelp')}</p>
+        {showCachedSnapshot && (
+          <p className="mt-2 rounded-xl bg-[var(--color-bg-primary)] border border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-text-muted)]">
+            {t('friends.cachedSnapshot')}
+          </p>
+        )}
 
         {searchedQuery && (
           <div className="mt-3 grid gap-2">

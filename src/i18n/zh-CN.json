@@ -116,6 +116,7 @@
     "searchPlaceholder": "输入完整的用户、Bot ID、UUID 或名称",
     "searchAction": "搜索",
     "searchHelp": "只有点击搜索按钮或按回车后才会查询，并且只做完全匹配。",
+    "cachedSnapshot": "当前显示的是本地缓存，正在同步最新好友和请求状态。",
     "noResults": "没有找到完全匹配的实体",
     "add": "添加",
     "friend": "好友",
@@ -251,7 +252,11 @@
     "create": "创建",
     "groupNamePlaceholder": "群组名称（可选）",
     "pin": "置顶会话",
-    "unpin": "取消置顶"
+    "unpin": "取消置顶",
+    "chatKindHuman": "人类",
+    "chatKindBot": "Bot",
+    "chatKindMixed": "混合",
+    "chatKindAgent": "Agent"
   },
   "settings": {
     "title": "设置",
