@@ -548,10 +548,12 @@ export function UserSettingsPage({ onBack }: Props) {
               </div>
               <button
                 onClick={() => void loadDevices()}
-                className="h-9 px-3 rounded-xl border border-[var(--color-border)] text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] inline-flex items-center gap-1.5 cursor-pointer"
+                aria-label={t('common.reload')}
+                title={t('common.reload')}
+                className="h-9 min-w-9 flex-shrink-0 whitespace-nowrap px-2 sm:px-3 rounded-xl border border-[var(--color-border)] text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] inline-flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <RefreshCw className={cn('w-3.5 h-3.5', devicesLoading && 'animate-spin')} />
-                {t('common.reload')}
+                <span className="hidden sm:inline">{t('common.reload')}</span>
               </button>
             </div>
 

@@ -14,9 +14,9 @@ import { buildGroupMemberSections } from '@/lib/group-members'
 import type { Conversation, Entity, Participant } from '@/lib/types'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import {
-  X, UserMinus, UserPlus, Bell, BellOff, Crown, Shield, Eye,
+  X, UserMinus, Bell, BellOff, Crown, Shield, Eye,
   Pencil, Check, LogOut, Archive, VolumeX, Volume2, Loader2, Copy, ArrowLeft, Search, Bot, UserRound,
-  ChevronDown, Settings2,
+  ChevronDown, Plus, Settings2,
 } from 'lucide-react'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
@@ -164,7 +164,9 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
   }
 
   const ownerName = (entity?: Entity) => entity?.owner_display_name || entity?.owner_name || ''
-  const previewParticipants = participants.length > 15 ? participants.slice(0, 14) : participants.slice(0, 15)
+  const showAddMemberTile = canAddMember && !isArchived
+  const previewLimit = showAddMemberTile ? 14 : 15
+  const previewParticipants = participants.slice(0, previewLimit)
 
   const renderMemberRow = (p: Participant, options?: { nested?: boolean; orphanBot?: boolean }) => {
     const nested = Boolean(options?.nested)
@@ -258,6 +260,51 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
     )
   }
 
+  const renderAddMemberPanel = () => (
+    <div className="mt-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-primary)]/45 p-3">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+        <input
+          value={addMemberSearch}
+          onChange={(e) => setAddMemberSearch(e.target.value)}
+          placeholder={t('conversation.search')}
+          autoFocus
+          className="w-full h-8 pl-8 pr-3 rounded-lg bg-[var(--color-bg-input)] border border-[var(--color-border)] text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]/50"
+        />
+      </div>
+      {addMemberLoading ? (
+        <div className="flex justify-center py-4">
+          <Loader2 className="w-4 h-4 text-[var(--color-text-muted)] animate-spin" />
+        </div>
+      ) : (
+        <div className="mt-2 max-h-44 overflow-y-auto space-y-0.5">
+          {filteredAddableEntities.map((e) => (
+            <button
+              key={e.id}
+              onClick={() => handleAddMember(e.id)}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--color-bg-hover)] cursor-pointer transition-colors text-left"
+            >
+              <EntityAvatar entity={e} size="xs" />
+              <span className="text-xs text-[var(--color-text-primary)] truncate flex-1">{entityDisplayName(e)}</span>
+              <span className="text-[9px] text-[var(--color-text-muted)]">
+                {isBotOrService(e) ? t('friends.yourBot') : t('friends.friend')}
+              </span>
+            </button>
+          ))}
+          {filteredAddableEntities.length === 0 && (
+            <p className="text-[10px] text-[var(--color-text-muted)] text-center py-3">{t('common.noEntities')}</p>
+          )}
+        </div>
+      )}
+      <button
+        onClick={() => { setShowAddMember(false); setAddMemberSearch('') }}
+        className="mt-2 w-full text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] py-1 cursor-pointer"
+      >
+        {t('common.cancel')}
+      </button>
+    </div>
+  )
+
   return (
     <div className={cn(
       'border-l border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex flex-col h-full overflow-hidden flex-shrink-0',
@@ -304,19 +351,22 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
 
             <div className="mt-3 grid grid-cols-5 gap-1">
               {previewParticipants.map(renderMemberTile)}
-              {participants.length > previewParticipants.length && (
+              {showAddMemberTile && (
                 <button
                   type="button"
-                  onClick={() => setShowAllMembers(true)}
+                  onClick={handleOpenAddMember}
                   className="rounded-xl px-1.5 py-2 text-center hover:bg-[var(--color-bg-hover)] transition-colors"
+                  title={t('common.addMember')}
                 >
-                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-bg-input)] border border-[var(--color-border)] text-xs font-semibold text-[var(--color-text-muted)]">
-                    +{participants.length - previewParticipants.length}
+                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-bg-input)] border border-dashed border-[var(--color-border)] text-[var(--color-text-muted)]">
+                    <Plus className="w-4 h-4" />
                   </div>
-                  <p className="mt-1 truncate text-[10px] text-[var(--color-text-secondary)]">{t('common.showDetails')}</p>
+                  <p className="mt-1 truncate text-[10px] text-[var(--color-text-secondary)]">{t('common.addMember')}</p>
                 </button>
               )}
             </div>
+
+            {showAddMember && renderAddMemberPanel()}
 
             {showAllMembers && (
               <div className="mt-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-primary)]/45 overflow-hidden">
@@ -338,62 +388,6 @@ export function ConversationSettingsPanel({ conversation, onClose, onLeave, isAr
                   )}
                 </div>
 
-                {canAddMember && !isArchived && (
-                  <div className="border-t border-[var(--color-border)] px-3 py-2">
-                    {showAddMember ? (
-                      <div className="space-y-2">
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                          <input
-                            value={addMemberSearch}
-                            onChange={(e) => setAddMemberSearch(e.target.value)}
-                            placeholder={t('conversation.search')}
-                            autoFocus
-                            className="w-full h-8 pl-8 pr-3 rounded-lg bg-[var(--color-bg-input)] border border-[var(--color-border)] text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]/50"
-                          />
-                        </div>
-                        {addMemberLoading ? (
-                          <div className="flex justify-center py-2">
-                            <Loader2 className="w-4 h-4 text-[var(--color-text-muted)] animate-spin" />
-                          </div>
-                        ) : (
-                          <div className="max-h-36 overflow-y-auto space-y-0.5">
-                            {filteredAddableEntities.map((e) => (
-                              <button
-                                key={e.id}
-                                onClick={() => handleAddMember(e.id)}
-                                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--color-bg-hover)] cursor-pointer transition-colors text-left"
-                              >
-                                <EntityAvatar entity={e} size="xs" />
-                                <span className="text-xs text-[var(--color-text-primary)] truncate flex-1">{entityDisplayName(e)}</span>
-                                <span className="text-[9px] text-[var(--color-text-muted)]">
-                                  {isBotOrService(e) ? t('friends.yourBot') : t('friends.friend')}
-                                </span>
-                              </button>
-                            ))}
-                            {filteredAddableEntities.length === 0 && (
-                              <p className="text-[10px] text-[var(--color-text-muted)] text-center py-2">{t('common.noEntities')}</p>
-                            )}
-                          </div>
-                        )}
-                        <button
-                          onClick={() => { setShowAddMember(false); setAddMemberSearch('') }}
-                          className="w-full text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] py-1 cursor-pointer"
-                        >
-                          {t('common.cancel')}
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={handleOpenAddMember}
-                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 cursor-pointer transition-colors"
-                      >
-                        <UserPlus className="w-3.5 h-3.5" />
-                        {t('common.addMember')}
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
             )}
           </div>
