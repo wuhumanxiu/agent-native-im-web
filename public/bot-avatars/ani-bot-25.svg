@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#DCFCE7"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.78"/>
+    </linearGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#064E3B" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="64" fill="url(#g)"/>
+  <circle cx="191" cy="70" r="2" fill="#22C55E" opacity="0.16"/><circle cx="53" cy="101" r="3" fill="#22C55E" opacity="0.16"/><circle cx="100" cy="132" r="4" fill="#22C55E" opacity="0.16"/><circle cx="147" cy="163" r="2" fill="#22C55E" opacity="0.16"/><circle cx="194" cy="194" r="3" fill="#22C55E" opacity="0.16"/><circle cx="56" cy="35" r="4" fill="#22C55E" opacity="0.16"/><circle cx="103" cy="66" r="2" fill="#22C55E" opacity="0.16"/><circle cx="150" cy="97" r="3" fill="#22C55E" opacity="0.16"/><circle cx="197" cy="128" r="4" fill="#22C55E" opacity="0.16"/>
+  <path d="M30 211c52-22 122-22 196 0" fill="none" stroke="#22C55E" stroke-width="2" stroke-dasharray="8 12" opacity="0.28"/>
+  <path d="M72 190v-62a56 56 0 11112 0v62z" fill="#fff" filter="url(#shadow)"/><path d="M95 190v-58a33 33 0 1166 0v58z" fill="#064E3B"/><circle cx="128" cy="135" r="20" fill="#22C55E"/><path d="M54 196h148" stroke="#22C55E" stroke-width="10" stroke-linecap="round"/><circle cx="80" cy="82" r="8" fill="#22C55E"/><circle cx="178" cy="72" r="7" fill="#064E3B"/>
+</svg>

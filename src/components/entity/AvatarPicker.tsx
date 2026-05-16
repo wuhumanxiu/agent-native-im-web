@@ -12,7 +12,7 @@ const PRESET_AVATARS = [
   '🔧', '📋', '🎨', '🔍', '📝', '🚀', '💡', '🌐',
 ]
 
-const SYSTEM_BOT_AVATARS = Array.from({ length: 12 }, (_, index) => {
+const SYSTEM_BOT_AVATARS = Array.from({ length: 32 }, (_, index) => {
   const id = String(index + 1).padStart(2, '0')
   return `/bot-avatars/ani-bot-${id}.png`
 })

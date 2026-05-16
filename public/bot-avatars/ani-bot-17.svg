@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFE4E6"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.78"/>
+    </linearGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#881337" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="64" fill="url(#g)"/>
+  <circle cx="87" cy="108" r="2" fill="#E11D48" opacity="0.16"/><circle cx="134" cy="139" r="3" fill="#E11D48" opacity="0.16"/><circle cx="181" cy="170" r="4" fill="#E11D48" opacity="0.16"/><circle cx="43" cy="201" r="2" fill="#E11D48" opacity="0.16"/><circle cx="90" cy="42" r="3" fill="#E11D48" opacity="0.16"/><circle cx="137" cy="73" r="4" fill="#E11D48" opacity="0.16"/><circle cx="184" cy="104" r="2" fill="#E11D48" opacity="0.16"/><circle cx="46" cy="135" r="3" fill="#E11D48" opacity="0.16"/><circle cx="93" cy="166" r="4" fill="#E11D48" opacity="0.16"/>
+  <path d="M30 211c52-22 122-22 196 0" fill="none" stroke="#E11D48" stroke-width="2" stroke-dasharray="8 12" opacity="0.28"/>
+  <path d="M62 132c42-54 91-54 132 0-41 54-90 54-132 0z" fill="#fff" filter="url(#shadow)"/><path d="M79 132c34-32 66-32 98 0-32 32-64 32-98 0z" fill="#E11D48" opacity=".9"/><circle cx="151" cy="124" r="6" fill="#881337"/><path d="M61 132l-30-28v56zM194 132l32-30v60z" fill="#E11D48" opacity=".7"/>
+</svg>

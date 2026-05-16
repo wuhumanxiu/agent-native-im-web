@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F5F3FF"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.78"/>
+    </linearGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#312E81" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="64" fill="url(#g)"/>
+  <circle cx="165" cy="32" r="2" fill="#8B5CF6" opacity="0.16"/><circle cx="212" cy="63" r="3" fill="#8B5CF6" opacity="0.16"/><circle cx="74" cy="94" r="4" fill="#8B5CF6" opacity="0.16"/><circle cx="121" cy="125" r="2" fill="#8B5CF6" opacity="0.16"/><circle cx="168" cy="156" r="3" fill="#8B5CF6" opacity="0.16"/><circle cx="215" cy="187" r="4" fill="#8B5CF6" opacity="0.16"/><circle cx="77" cy="218" r="2" fill="#8B5CF6" opacity="0.16"/><circle cx="124" cy="59" r="3" fill="#8B5CF6" opacity="0.16"/><circle cx="171" cy="90" r="4" fill="#8B5CF6" opacity="0.16"/>
+  <path d="M30 211c52-22 122-22 196 0" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-dasharray="8 12" opacity="0.28"/>
+  <circle cx="128" cy="128" r="68" fill="#fff" filter="url(#shadow)"/><circle cx="128" cy="128" r="42" fill="#8B5CF6" opacity=".65"/><path d="M58 128c32-30 108-30 140 0M58 128c32 30 108 30 140 0" fill="none" stroke="#312E81" stroke-width="8" stroke-linecap="round"/><circle cx="185" cy="92" r="12" fill="#8B5CF6"/><circle cx="76" cy="174" r="9" fill="#312E81"/>
+</svg>
