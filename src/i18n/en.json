@@ -409,7 +409,7 @@
     "feedbackTitle": "Send product issues and requests to the platform team",
     "feedbackDesc": "Report bugs, product requests, account problems, or general questions. Admins can manage every item, while regular users only see their own submissions.",
     "feedbackNew": "New feedback",
-    "feedbackNewHint": "Attachments supported",
+    "feedbackNewHint": "Submit bugs, product ideas, account issues, or questions. Admins follow up; users only see their own feedback.",
     "feedbackMine": "My feedback",
     "feedbackAll": "All feedback",
     "feedbackCount": "{{count}} item(s)",

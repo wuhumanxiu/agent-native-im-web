@@ -409,7 +409,7 @@
     "feedbackTitle": "把问题和需求直接反馈给平台团队",
     "feedbackDesc": "提交使用过程中遇到的 Bug、产品建议、账号问题或一般咨询。管理员可以统一跟进，普通用户只能看到自己提交的内容。",
     "feedbackNew": "提交反馈",
-    "feedbackNewHint": "支持附件",
+    "feedbackNewHint": "提交 Bug、产品建议、账号问题或咨询；管理员统一跟进，用户仅看自己的反馈。",
     "feedbackMine": "我的反馈",
     "feedbackAll": "全部反馈",
     "feedbackCount": "{{count}} 条记录",

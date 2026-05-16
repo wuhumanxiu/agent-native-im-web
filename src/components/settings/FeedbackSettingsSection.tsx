@@ -459,7 +459,7 @@ export function FeedbackSettingsSection({ token, isMobile }: FeedbackSettingsSec
           </span>
           <span className="min-w-0">
             <span className="block text-sm font-semibold text-[var(--color-text-primary)]">{t('settings.feedbackNew')}</span>
-            <span className="mt-0.5 block truncate text-[11px] text-[var(--color-text-muted)]">{t('settings.feedbackNewHint')}</span>
+            <span className="mt-0.5 block text-[11px] leading-4 text-[var(--color-text-muted)]">{t('settings.feedbackNewHint')}</span>
           </span>
         </span>
         <ChevronDown className={cn('h-4 w-4 flex-shrink-0 text-[var(--color-text-muted)] transition-transform', formExpanded && 'rotate-180')} />
@@ -538,7 +538,6 @@ export function FeedbackSettingsSection({ token, isMobile }: FeedbackSettingsSec
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs leading-5 text-[var(--color-text-muted)]">{t('settings.feedbackDesc')}</p>
               <textarea
                 value={form.description}
                 onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
