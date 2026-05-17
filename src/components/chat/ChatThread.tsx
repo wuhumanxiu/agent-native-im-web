@@ -4,6 +4,7 @@ import { MessageList } from './MessageList'
 import { MessageComposer, type ComposerEditPrefill, type UploadedAttachment } from './MessageComposer'
 import { GroupMembersPanel } from '@/components/conversation/GroupMembersPanel'
 import { EntityAvatar } from '@/components/entity/EntityAvatar'
+import { GroupAvatar } from '@/components/conversation/GroupAvatar'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useAuthStore } from '@/store/auth'
 import { useMessagesStore } from '@/store/messages'
@@ -15,7 +16,7 @@ import { entityDisplayName, isBotOrService, cn } from '@/lib/utils'
 import { cacheMessages, getCachedMessages, enqueueOutboxMessage, getOutboxMessageByTempId, deleteOutboxMessage, updateOutboxMessage } from '@/lib/cache'
 import { DotsAnimation } from '@/components/ui/DotsAnimation'
 import { SkeletonLoader } from '@/components/ui/SkeletonLoader'
-import { Search, Users, ArrowLeft, Loader2, X, Settings, ListTodo, Bug, Check, Contact, Send } from 'lucide-react'
+import { Search, ArrowLeft, Loader2, X, Settings, ListTodo, Bug, Check, Contact, Send } from 'lucide-react'
 import { useSettingsStore } from '@/store/settings'
 import { inspectChatBubbles, copyToClipboard } from '@/lib/layout-inspector'
 import { getRecalledDraft } from './recalled-message'
@@ -831,9 +832,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
           className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer rounded-2xl px-1.5 py-1 hover:bg-[var(--color-bg-hover)]/60 transition-colors"
         >
           {isGroup ? (
-            <div className="w-9 h-9 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-border)] flex items-center justify-center flex-shrink-0">
-              <Users className="w-4 h-4 text-[var(--color-accent)]" />
-            </div>
+            <GroupAvatar participants={conversation.participants} size="sm" />
           ) : (
             <EntityAvatar entity={otherParticipant} size="sm" showStatus />
           )}
@@ -1066,9 +1065,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[var(--color-bg-hover)] transition-colors cursor-pointer disabled:opacity-60"
                   >
                     {targetIsGroup ? (
-                      <div className="w-9 h-9 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-border)] flex items-center justify-center flex-shrink-0">
-                        <Users className="w-4 h-4 text-[var(--color-accent)]" />
-                      </div>
+                      <GroupAvatar participants={targetConversation.participants} size="sm" />
                     ) : (
                       <EntityAvatar entity={targetEntity} size="sm" />
                     )}

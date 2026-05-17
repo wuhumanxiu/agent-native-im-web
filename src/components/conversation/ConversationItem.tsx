@@ -2,9 +2,10 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn, entityDisplayName, formatRelativeTime, truncate, isBotOrService } from '@/lib/utils'
 import { EntityAvatar } from '@/components/entity/EntityAvatar'
+import { GroupAvatar } from '@/components/conversation/GroupAvatar'
 import { useConversationsStore } from '@/store/conversations'
 import type { Conversation } from '@/lib/types'
-import { Bot, MessagesSquare, Pencil, Check, X, VolumeX, LogOut, Archive, Pin, PinOff } from 'lucide-react'
+import { Bot, Pencil, Check, X, VolumeX, LogOut, Archive, Pin, PinOff } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import * as api from '@/lib/api'
 
@@ -146,10 +147,8 @@ export function ConversationItem({ conv, active, myEntityId, onClick, onUpdate, 
       >
         {/* Avatar — 40px */}
         {isGroup ? (
-          <div className="relative w-10 h-10 flex-shrink-0 self-start">
-            <div className="w-10 h-10 rounded-full bg-[var(--color-accent-dim)] border border-[var(--color-border)] flex items-center justify-center">
-              <MessagesSquare className="w-4.5 h-4.5 text-[var(--color-accent)]" />
-            </div>
+          <div className="self-start">
+            <GroupAvatar participants={conv.participants} />
           </div>
         ) : (
           <div className="self-start">
