@@ -13,11 +13,11 @@ describe('bot access helpers', () => {
       roleHint: '全栈开发工程师，尤其擅长APP开发',
     })
 
-    expect(text).toContain('npx -y @wzfukui/openclaw-ani-installer install')
+    expect(text).toContain('npx -y @wuhumanxiu/openclaw-ani-installer install')
     expect(text).toContain('openclaw config set channels.ani.apiKey "aim_test_token"')
     expect(text).toContain('## Option B: Zebra gateway adapter')
     expect(text).toContain('The ANI adapter is bundled with Zebra by default')
-    expect(text).toContain('https://github.com/wzfukui/zebra-agent/tree/main/plugins/platforms/ani')
+    expect(text).toContain('https://github.com/wuhumanxiu/zebra-agent/tree/main/plugins/platforms/ani')
     expect(text).toContain('Release tag with the adapter: v2026.5.6')
     expect(text).toContain('test -f plugins/platforms/ani/adapter.py')
     expect(text).toContain('python -m py_compile plugins/platforms/ani/adapter.py')
@@ -26,7 +26,7 @@ describe('bot access helpers', () => {
     expect(text).toContain('export ANI_API_KEY="aim_test_token"')
     expect(text).toContain('zebra gateway restart')
     expect(text).toContain('## Option C: Hermes gateway adapter')
-    expect(text).toContain('https://github.com/wzfukui/hermes-ani-adapter')
+    expect(text).toContain('https://github.com/wuhumanxiu/hermes-ani-adapter')
     expect(text).toContain('./scripts/install.sh ~/code/hermes-agent')
     expect(text).toContain('Add or update this block in ~/.hermes/config.yaml')
     expect(text).toContain('hermes gateway restart')

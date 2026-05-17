@@ -1,6 +1,6 @@
 # Agent Native IM - Web
 
-Web control panel for the [Agent-Native IM](https://github.com/wzfukui/agent-native-im) platform. Version **1.6.2**.
+Web control panel for the [Agent-Native IM](https://github.com/wuhumanxiu/agent-native-im) platform. Version **1.6.2**.
 
 ## Current Position
 
@@ -158,9 +158,9 @@ Before broad public release, use these documents as the current source of truth:
 
 | Project | Description |
 |---|---|
-| [agent-native-im](https://github.com/wzfukui/agent-native-im) | Backend (Go) |
-| [agent-native-im-mobile](https://github.com/wzfukui/agent-native-im-mobile) | Mobile app (`ANI`) |
-| [agent-native-im-sdk-python](https://github.com/wzfukui/agent-native-im-sdk-python) | Python SDK |
+| [agent-native-im](https://github.com/wuhumanxiu/agent-native-im) | Backend (Go) |
+| [agent-native-im-mobile](https://github.com/wuhumanxiu/agent-native-im-mobile) | Mobile app (`ANI`) |
+| [agent-native-im-sdk-python](https://github.com/wuhumanxiu/agent-native-im-sdk-python) | Python SDK |
 
 ## License
 

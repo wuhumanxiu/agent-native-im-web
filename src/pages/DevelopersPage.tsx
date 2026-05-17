@@ -17,18 +17,18 @@ import {
 const sdkCards = [
   {
     title: 'Python SDK',
-    repo: 'wzfukui/ani-agent-sdk-python',
-    href: 'https://github.com/wzfukui/ani-agent-sdk-python',
+    repo: 'wuhumanxiu/ani-agent-sdk-python',
+    href: 'https://github.com/wuhumanxiu/ani-agent-sdk-python',
     body: 'Shared ANI protocol layer for Zebra, Hermes, and future Python agent runtimes.',
     command: 'pip install ani-agent-sdk-python',
     icon: Package,
   },
   {
     title: 'JavaScript SDK',
-    repo: 'wzfukui/ani-agent-sdk-js',
-    href: 'https://github.com/wzfukui/ani-agent-sdk-js',
+    repo: 'wuhumanxiu/ani-agent-sdk-js',
+    href: 'https://github.com/wuhumanxiu/ani-agent-sdk-js',
     body: 'Shared TypeScript client for OpenClaw-style extensions and Node.js agents.',
-    command: 'npm install @wzfukui/ani-agent-sdk',
+    command: 'npm install @wuhumanxiu/ani-agent-sdk',
     icon: Braces,
   },
 ]
@@ -88,11 +88,11 @@ export function DevelopersPage() {
                 ANI is moving to a shared SDK model: Python and JavaScript clients own the protocol, while Zebra, Hermes, OpenClaw, and future agents keep their adapters thin.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <a href="https://github.com/wzfukui/ani-agent-sdk-python" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#07c160] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#07c160]/25 transition hover:-translate-y-0.5 hover:bg-[#06ad56]">
+                <a href="https://github.com/wuhumanxiu/ani-agent-sdk-python" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#07c160] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#07c160]/25 transition hover:-translate-y-0.5 hover:bg-[#06ad56]">
                   Start with Python
                   <ArrowRight className="h-4 w-4" />
                 </a>
-                <a href="https://github.com/wzfukui/ani-agent-sdk-js" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white/75 px-5 py-3 text-sm font-semibold text-[#17201a] transition hover:-translate-y-0.5 hover:bg-white">
+                <a href="https://github.com/wuhumanxiu/ani-agent-sdk-js" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white/75 px-5 py-3 text-sm font-semibold text-[#17201a] transition hover:-translate-y-0.5 hover:bg-white">
                   Start with TypeScript
                   <FileCode2 className="h-4 w-4" />
                 </a>
@@ -156,7 +156,7 @@ export function DevelopersPage() {
                   The spec explains authentication, WebSocket events, message send shape, files, presence, tasks, and structured mentions.
                 </p>
               </div>
-              <a href="https://github.com/wzfukui/agent-native-im/blob/main/docs/ANI_AGENT_INTEGRATION_SPEC_V1.md" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-[#17201a] transition hover:-translate-y-0.5">
+              <a href="https://github.com/wuhumanxiu/agent-native-im/blob/main/docs/ANI_AGENT_INTEGRATION_SPEC_V1.md" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-[#17201a] transition hover:-translate-y-0.5">
                 Read Protocol Spec
                 <TerminalSquare className="h-4 w-4" />
               </a>

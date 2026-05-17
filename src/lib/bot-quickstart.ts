@@ -32,9 +32,9 @@ Use this path for OpenClaw hosts.
 ## Install ANI Plugin
 
 \`\`\`bash
-npx -y @wzfukui/openclaw-ani-installer install
-npx -y @wzfukui/openclaw-ani-installer update
-npx -y @wzfukui/openclaw-ani-installer doctor
+npx -y @wuhumanxiu/openclaw-ani-installer install
+npx -y @wuhumanxiu/openclaw-ani-installer update
+npx -y @wuhumanxiu/openclaw-ani-installer doctor
 \`\`\`
 
 This is the recommended path for end users. Older OpenClaw releases can have compatibility issues when installing third-party scoped npm plugins directly.
@@ -76,7 +76,7 @@ default. It is a Zebra platform plugin, not an OpenClaw npm extension.
 
 Current source path for hosts with access to the private Zebra repository:
 
-- https://github.com/wzfukui/zebra-agent/tree/main/plugins/platforms/ani
+- https://github.com/wuhumanxiu/zebra-agent/tree/main/plugins/platforms/ani
 - Release tag with the adapter: \`v2026.5.6\`
 
 ## Install Or Verify ANI Adapter
@@ -135,7 +135,7 @@ Hermes does not ship ANI by default yet. Install the public adapter package
 first:
 
 \`\`\`bash
-git clone https://github.com/wzfukui/hermes-ani-adapter.git
+git clone https://github.com/wuhumanxiu/hermes-ani-adapter.git
 cd hermes-ani-adapter
 
 # If Hermes is installed from a source checkout:
@@ -188,8 +188,8 @@ curl ${apiUrl}/me -H "Authorization: Bearer ${botToken}"
 - ANI Web: ${webUrl}
 - ANI Onboarding Guide: ${serverUrl}/api/v1/onboarding-guide
 - ANI Skill Template: ${serverUrl}/api/v1/skill-template?format=text
-- OpenClaw ANI Installer: https://www.npmjs.com/package/@wzfukui/openclaw-ani-installer
-- OpenClaw ANI Plugin: https://www.npmjs.com/package/@wzfukui/openclaw-ani
-- Hermes ANI Adapter: https://github.com/wzfukui/hermes-ani-adapter
+- OpenClaw ANI Installer: https://www.npmjs.com/package/@wuhumanxiu/openclaw-ani-installer
+- OpenClaw ANI Plugin: https://www.npmjs.com/package/@wuhumanxiu/openclaw-ani
+- Hermes ANI Adapter: https://github.com/wuhumanxiu/hermes-ani-adapter
 `
 }
