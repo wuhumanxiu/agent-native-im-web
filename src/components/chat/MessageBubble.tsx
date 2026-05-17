@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, type MouseEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -19,11 +19,161 @@ import type { Entity, EntityCardPayload, Message } from '@/lib/types'
 import { ReactionBar } from './ReactionBar'
 import {
   FileText, Download, Play, Pause,
-  Brain, Check, ChevronDown, ChevronUp, CornerUpLeft, Ban, CloudOff, Clock, RotateCcw, MoreHorizontal, Contact, Bot, User, ExternalLink, MessageSquare, UserPlus, Loader2,
+  Brain, Check, ChevronDown, ChevronUp, CornerUpLeft, Ban, CloudOff, Clock, RotateCcw, MoreHorizontal, Contact, Bot, User, ExternalLink, MessageSquare, UserPlus, Loader2, Copy,
 } from 'lucide-react'
 
 /** Max collapsed height in px (~10 lines of text) */
 const COLLAPSE_HEIGHT = 240
+const URL_PATTERN = /\b(?:https?:\/\/|www\.)[^\s<>"']+/gi
+const TRAILING_URL_PUNCTUATION = /[.,!?;:)\]}]+$/
+
+interface TextLink {
+  text: string
+  href: string
+  start: number
+  end: number
+}
+
+function normalizeLinkHref(text: string): string {
+  return /^https?:\/\//i.test(text) ? text : `https://${text}`
+}
+
+function getLinkHost(href: string): string {
+  try {
+    return new URL(href).hostname.replace(/^www\./i, '')
+  } catch {
+    return href
+  }
+}
+
+function findTextLinks(text: string): TextLink[] {
+  URL_PATTERN.lastIndex = 0
+  const links: TextLink[] = []
+
+  for (const match of text.matchAll(URL_PATTERN)) {
+    const raw = match[0]
+    const trimmed = raw.replace(TRAILING_URL_PUNCTUATION, '')
+    if (!trimmed) continue
+
+    const href = normalizeLinkHref(trimmed)
+    try {
+      // Reject invalid URLs while still accepting scheme-less www.* links.
+      new URL(href)
+    } catch {
+      continue
+    }
+
+    const start = match.index ?? 0
+    links.push({
+      text: trimmed,
+      href,
+      start,
+      end: start + trimmed.length,
+    })
+  }
+
+  return links
+}
+
+function isStandaloneLink(text: string, links: TextLink[]): boolean {
+  if (links.length !== 1) return false
+  const [link] = links
+  return text.slice(0, link.start).trim() === '' && text.slice(link.end).trim() === ''
+}
+
+function LinkifiedText({ text }: { text: string }) {
+  const links = findTextLinks(text)
+  if (links.length === 0) {
+    return <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>
+  }
+
+  const nodes: ReactNode[] = []
+  let cursor = 0
+  links.forEach((link, index) => {
+    if (link.start > cursor) {
+      nodes.push(text.slice(cursor, link.start))
+    }
+    nodes.push(
+      <a
+        key={`${link.href}-${index}`}
+        href={link.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[var(--color-accent-hover)] underline underline-offset-2 break-all hover:text-[var(--color-accent)]"
+      >
+        {link.text}
+      </a>,
+    )
+    cursor = link.end
+  })
+  if (cursor < text.length) {
+    nodes.push(text.slice(cursor))
+  }
+
+  return <p className="text-sm leading-relaxed whitespace-pre-wrap">{nodes}</p>
+}
+
+function PlainTextLinkPreview({ link }: { link: TextLink }) {
+  const { t } = useTranslation()
+  const host = getLinkHost(link.href)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyLink = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    try {
+      await navigator.clipboard.writeText(link.href)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <div className="group/link relative min-w-[220px] max-w-[320px] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)]/70 transition-colors hover:border-[var(--color-accent)]/45">
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block"
+      >
+        <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2 pr-10">
+          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-[var(--color-accent-dim)]">
+            <ExternalLink className="h-3.5 w-3.5 text-[var(--color-accent)]" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-semibold text-[var(--color-text-primary)]">{host}</p>
+            <p className="truncate text-[10px] text-[var(--color-text-muted)]">{link.href}</p>
+          </div>
+        </div>
+        <div className="px-3 py-2.5">
+          <p className="break-all text-sm leading-relaxed text-[var(--color-accent-hover)] group-hover/link:text-[var(--color-accent)]">
+            {link.text}
+          </p>
+        </div>
+      </a>
+      <button
+        type="button"
+        onClick={handleCopyLink}
+        aria-label={copied ? t('common.copied') : t('common.copyLink')}
+        title={copied ? t('common.copied') : t('common.copyLink')}
+        className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)]/95 text-[var(--color-text-muted)] opacity-80 shadow-sm transition hover:border-[var(--color-accent)]/45 hover:text-[var(--color-accent)] hover:opacity-100"
+      >
+        {copied ? <Check className="h-3.5 w-3.5 text-[var(--color-success)]" /> : <Copy className="h-3.5 w-3.5" />}
+      </button>
+    </div>
+  )
+}
+
+function PlainTextContent({ text }: { text: string }) {
+  const links = findTextLinks(text)
+  if (isStandaloneLink(text, links)) {
+    return <PlainTextLinkPreview link={links[0]} />
+  }
+  return <LinkifiedText text={text} />
+}
 
 function AudioPlayer({ url, duration: totalDuration }: { url?: string; duration?: number }) {
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -132,18 +282,23 @@ function SharedEntityCard({
 
   useEffect(() => {
     let cancelled = false
+    const applyFriendState = (next: typeof friendState) => {
+      queueMicrotask(() => {
+        if (!cancelled) setFriendState(next)
+      })
+    }
     const targetId = card.entity_id
     const targetPublicId = card.public_id
     if (!token || !myEntity || (!targetId && !targetPublicId)) {
-      setFriendState('stranger')
-      return
+      applyFriendState('stranger')
+      return () => { cancelled = true }
     }
     if ((targetId && targetId === myEntity.id) || (targetPublicId && targetPublicId === myEntity.public_id)) {
-      setFriendState('self')
-      return
+      applyFriendState('self')
+      return () => { cancelled = true }
     }
 
-    setFriendState('loading')
+    applyFriendState('loading')
     Promise.all([
       api.listFriends(token),
       api.listFriendRequests(token, { direction: 'outgoing', status: 'pending' }),
@@ -490,7 +645,7 @@ export function MessageBubble({ message, isSelf, myEntityId, replyMessage, inter
       default: // text
         return (
           <>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{body}</p>
+            <PlainTextContent text={body} />
             {message.attachments && message.attachments.length > 0 && (
               <div className="space-y-1.5 mt-1.5">
                 {message.attachments.some((att) => att.type === 'image') && (

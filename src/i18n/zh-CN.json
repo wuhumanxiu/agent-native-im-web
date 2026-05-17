@@ -694,6 +694,7 @@
   },
   "common": {
     "copy": "复制",
+    "copyLink": "复制链接",
     "you": "(你)",
     "loading": "加载中...",
     "error": "错误",
