@@ -109,7 +109,7 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
   const [activeTab, setActiveTab] = useState<'direct' | 'groups'>('direct')
   const [confirmDisable, setConfirmDisable] = useState(false)
   // credStatus removed — selfCheck provides the same info
-  const [selfCheck, setSelfCheck] = useState<{ ready: boolean; recommendation: string[]; has_api_key: boolean; has_bootstrap: boolean } | null>(null)
+  const [selfCheck, setSelfCheck] = useState<{ ready: boolean; online?: boolean; recommendation: string[]; has_api_key: boolean; has_bootstrap: boolean } | null>(null)
   const [diagnostics, setDiagnostics] = useState<BotDiagnostics | null>(null)
   const [lastSeen, setLastSeen] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | false>(false)
@@ -136,6 +136,7 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
   const [loadingAccessLinks, setLoadingAccessLinks] = useState(false)
   const [creatingAccessLink, setCreatingAccessLink] = useState(false)
   const previousBotIdRef = useRef<number | null>(null)
+  const accessAutoExpandedBotRef = useRef<number | null>(null)
   const isOwner = !!(bot && myEntity && bot.owner_id === myEntity.id)
 
   // Reset one-time UI state only when switching to a different bot.
@@ -169,6 +170,19 @@ export function BotDetail({ bot, createdCredentials, onDismissCredentials, onBac
       access_password: '',
     })
   }, [bot?.id])
+
+  useEffect(() => {
+    if (!bot || !isOwner) return
+    if (accessAutoExpandedBotRef.current === bot.id) return
+    if (!selfCheck && !diagnostics) return
+
+    accessAutoExpandedBotRef.current = bot.id
+    const isConnected = diagnostics?.online || selfCheck?.online
+    if (!isConnected) {
+      setOpsExpanded(true)
+      setAccessPackExpanded(true)
+    }
+  }, [bot?.id, diagnostics, isOwner, selfCheck])
 
   // Load conversations for the currently selected bot.
   useEffect(() => {
