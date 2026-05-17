@@ -16,13 +16,14 @@ import { entityDisplayName, isBotOrService, cn } from '@/lib/utils'
 import { cacheMessages, getCachedMessages, enqueueOutboxMessage, getOutboxMessageByTempId, deleteOutboxMessage, updateOutboxMessage } from '@/lib/cache'
 import { DotsAnimation } from '@/components/ui/DotsAnimation'
 import { SkeletonLoader } from '@/components/ui/SkeletonLoader'
-import { Search, ArrowLeft, Loader2, X, Settings, ListTodo, Bug, Check, Contact, Send } from 'lucide-react'
+import { Search, ArrowLeft, Loader2, X, Settings, ListTodo, Bug, Check, Contact, Send, Forward, CheckSquare } from 'lucide-react'
 import { useSettingsStore } from '@/store/settings'
 import { inspectChatBubbles, copyToClipboard } from '@/lib/layout-inspector'
 import { getRecalledDraft } from './recalled-message'
 
 const EMPTY_MESSAGES: Message[] = []
 const REVOKE_NOTICE_KEY = 'ani:revoke-notice:v1'
+type ForwardMode = 'merged' | 'separate'
 
 interface Props {
   conversation: Conversation
@@ -75,6 +76,13 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
   const [botThinkingEntity, setBotThinkingEntity] = useState<import('@/lib/types').Entity | null>(null)
   const [shareCardEntity, setShareCardEntity] = useState<Entity | null>(null)
   const [shareCardSendingId, setShareCardSendingId] = useState<number | null>(null)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedMessageIds, setSelectedMessageIds] = useState<Set<number>>(new Set())
+  const [forwardingMessages, setForwardingMessages] = useState<Message[] | null>(null)
+  const [forwardMode, setForwardMode] = useState<ForwardMode>('merged')
+  const [forwardNote, setForwardNote] = useState('')
+  const [forwardTargetId, setForwardTargetId] = useState<number | null>(null)
+  const [forwardSending, setForwardSending] = useState(false)
   const botThinkingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dragCountRef = useRef(0)
   const updateConversation = useConversationsStore((s) => s.updateConversation)
@@ -111,6 +119,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
       )
     })
   }, [conversation.id, conversations, myEntity.id, shareCardEntity])
+  const forwardTargetConversations = useMemo(() => conversations, [conversations])
 
   // Check if current user is observer
   const myParticipant = conversation.participants?.find((p) => p.entity_id === myEntity.id)
@@ -205,6 +214,108 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
       assigned_public_ids: assignedPublicIds,
     }
   }, [conversation.participants])
+
+  const getMessageForwardText = useCallback((msg: Message) => {
+    const body = (msg.layers?.data?.body as string) || msg.layers?.summary || ''
+    if (body.trim()) return body.trim()
+    if (msg.content_type === 'audio') return t('message.forwardAudio')
+    if (msg.attachments?.length) {
+      return msg.attachments.map((att) => att.filename || att.type || t('message.forwardAttachment')).join(', ')
+    }
+    return t('message.forwardUnsupported')
+  }, [t])
+
+  const buildForwardBodies = useCallback((items: Message[], mode: ForwardMode, note: string) => {
+    const cleanNote = note.trim()
+    if (mode === 'merged') {
+      const merged = items.map((msg) => {
+        const senderName = entityDisplayName(msg.sender)
+        return `${senderName}: ${getMessageForwardText(msg)}`
+      }).join('\n\n')
+      return [cleanNote ? `${merged}\n\n${cleanNote}` : merged]
+    }
+    const bodies = items.map(getMessageForwardText)
+    return cleanNote ? [...bodies, cleanNote] : bodies
+  }, [getMessageForwardText])
+
+  const resolveForwardMentionIds = useCallback((target: Conversation | undefined, note: string) => {
+    if (!target || !note.includes('@')) return []
+    const ids = new Set<number>()
+    for (const participant of target.participants || []) {
+      const entity = participant.entity
+      if (!entity) continue
+      const names = [entity.display_name, entity.name, entity.bot_id].filter(Boolean) as string[]
+      if (names.some((name) => note.includes(`@${name}`))) ids.add(participant.entity_id)
+    }
+    return [...ids]
+  }, [])
+
+  const startForward = useCallback((items: Message[]) => {
+    if (items.length === 0) return
+    setForwardingMessages(items)
+    setForwardMode(items.length > 1 ? 'merged' : 'separate')
+    setForwardNote('')
+    setForwardTargetId(conversation.id)
+  }, [conversation.id])
+
+  const handleSelectMessage = useCallback((msg: Message) => {
+    setSelectionMode(true)
+    setSelectedMessageIds(new Set([msg.id]))
+  }, [])
+
+  const toggleSelectedMessage = useCallback((msg: Message) => {
+    setSelectedMessageIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(msg.id)) next.delete(msg.id)
+      else next.add(msg.id)
+      return next
+    })
+  }, [])
+
+  const clearSelection = useCallback(() => {
+    setSelectionMode(false)
+    setSelectedMessageIds(new Set())
+  }, [])
+
+  const handleForwardSelected = useCallback(() => {
+    const selected = messages.filter((msg) => selectedMessageIds.has(msg.id))
+    startForward(selected)
+  }, [messages, selectedMessageIds, startForward])
+
+  const submitForward = useCallback(async () => {
+    if (!forwardingMessages || forwardingMessages.length === 0 || !forwardTargetId || forwardSending) return
+    const target = conversations.find((item) => item.id === forwardTargetId)
+    if (!target) return
+    setForwardSending(true)
+    const mentionIds = resolveForwardMentionIds(target, forwardNote)
+    const bodies = buildForwardBodies(forwardingMessages, forwardMode, forwardNote)
+    try {
+      for (const body of bodies) {
+        const res = await api.sendMessage(token, {
+          conversation_id: target.id,
+          conversation_public_id: target.public_id || (typeof target.metadata?.public_id === 'string' ? target.metadata.public_id : undefined),
+          content_type: 'text',
+          layers: {
+            summary: body,
+            data: { body, forwarded: { source_conversation_id: conversation.id, message_ids: forwardingMessages.map((msg) => msg.id), mode: forwardMode } },
+          },
+          mentions: mentionIds,
+        })
+        if (res.ok && res.data) {
+          addMessage(res.data)
+          updateConversation(target.id, {
+            last_message: res.data,
+            updated_at: res.data.created_at,
+          })
+        }
+      }
+      setForwardingMessages(null)
+      setForwardNote('')
+      clearSelection()
+    } finally {
+      setForwardSending(false)
+    }
+  }, [addMessage, buildForwardBodies, clearSelection, conversation.id, conversations, forwardMode, forwardNote, forwardSending, forwardingMessages, forwardTargetId, resolveForwardMentionIds, token, updateConversation])
 
   // Active streams for this conversation
   const convStreams = useMemo<ActiveStream[]>(
@@ -655,7 +766,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
         setShowRevokeNotice(true)
       }
     }
-  }, [token, conversation.id, isArchived, revokeMessage, t])
+  }, [token, conversation.id, isArchived, revokeMessage])
 
   const handleEditRecalled = useCallback((msg: Message) => {
     const draft = getRecalledDraft(msg, conversation.participants)
@@ -944,6 +1055,29 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
         </div>
       )}
 
+      {selectionMode && (
+        <div className="px-4 py-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/95 backdrop-blur-xl flex items-center gap-2">
+          <CheckSquare className="w-4 h-4 text-[var(--color-accent)] flex-shrink-0" />
+          <span className="text-xs font-medium text-[var(--color-text-primary)] flex-1">
+            {t('message.selectedCount', { count: selectedMessageIds.size })}
+          </span>
+          <button
+            onClick={handleForwardSelected}
+            disabled={selectedMessageIds.size === 0}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50 disabled:cursor-default cursor-pointer"
+          >
+            <Forward className="w-3.5 h-3.5" />
+            {t('message.forward')}
+          </button>
+          <button
+            onClick={clearSelection}
+            className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] cursor-pointer"
+          >
+            {t('common.cancel')}
+          </button>
+        </div>
+      )}
+
       {/* Search bar */}
       {searching && (
         <div className="px-4 py-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]/90 backdrop-blur-xl">
@@ -1000,6 +1134,11 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
           onEntitySendMessage={onEntitySendMessage}
           onEntityViewDetails={onEntityViewDetails}
           onEntityShareCard={isArchived ? undefined : handleShareEntityCard}
+          onForward={isArchived ? undefined : (msg) => startForward([msg])}
+          onSelect={isArchived ? undefined : handleSelectMessage}
+          selectionMode={selectionMode}
+          selectedMessageIds={selectedMessageIds}
+          onToggleSelected={toggleSelectedMessage}
           thinkingEntity={botThinkingEntity || undefined}
           progress={progress}
         />
@@ -1081,6 +1220,96 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
                   </button>
                 )
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {forwardingMessages && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/55 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => !forwardSending && setForwardingMessages(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-2xl overflow-hidden"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-border)]">
+              <Forward className="w-4 h-4 text-[var(--color-accent)]" />
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                  {t('message.forwardMessages')}
+                </h3>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  {t('message.selectedCount', { count: forwardingMessages.length })}
+                </p>
+              </div>
+              <button
+                onClick={() => setForwardingMessages(null)}
+                disabled={forwardSending}
+                aria-label={t('common.close')}
+                className="w-8 h-8 rounded-lg hover:bg-[var(--color-bg-hover)] flex items-center justify-center cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4 text-[var(--color-text-muted)]" />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-2 rounded-xl bg-[var(--color-bg-tertiary)] p-1">
+                {(['merged', 'separate'] as ForwardMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setForwardMode(mode)}
+                    className={cn(
+                      'rounded-lg px-3 py-2 text-xs font-medium cursor-pointer transition-colors',
+                      forwardMode === mode
+                        ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] shadow-sm'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
+                    )}
+                  >
+                    {t(`message.forwardMode.${mode}`)}
+                  </button>
+                ))}
+              </div>
+              <div className="max-h-44 overflow-y-auto rounded-xl border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+                {forwardTargetConversations.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setForwardTargetId(item.id)}
+                    className={cn(
+                      'w-full px-3 py-2.5 text-left text-sm hover:bg-[var(--color-bg-hover)] cursor-pointer flex items-center gap-2',
+                      forwardTargetId === item.id && 'bg-[var(--color-accent)]/10',
+                    )}
+                  >
+                    <span className="flex-1 truncate text-[var(--color-text-primary)]">{item.title || `#${item.id}`}</span>
+                    {forwardTargetId === item.id && <Check className="w-4 h-4 text-[var(--color-accent)]" />}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={forwardNote}
+                onChange={(event) => setForwardNote(event.target.value)}
+                placeholder={t('message.forwardNotePlaceholder')}
+                className="w-full min-h-20 resize-none rounded-xl bg-[var(--color-bg-input)] border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]/50"
+              />
+            </div>
+            <div className="px-4 py-3 border-t border-[var(--color-border)] flex justify-end gap-2">
+              <button
+                onClick={() => setForwardingMessages(null)}
+                disabled={forwardSending}
+                className="rounded-lg px-3 py-2 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] cursor-pointer disabled:opacity-50"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={() => void submitForward()}
+                disabled={!forwardTargetId || forwardSending}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-accent)] px-3 py-2 text-xs font-medium text-white disabled:opacity-50 disabled:cursor-default cursor-pointer"
+              >
+                {forwardSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                {t('message.forwardSend')}
+              </button>
             </div>
           </div>
         </div>
