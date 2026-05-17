@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveComposerMentionState, parseComposerDraft, serializeComposerDraft, type PendingFile } from './MessageComposerDraft'
+import { deriveComposerMentionState, normalizeAssignedMentionIds, parseComposerDraft, serializeComposerDraft, type PendingFile } from './MessageComposerDraft'
 import type { Participant } from '@/lib/types'
 
 describe('composer draft helpers', () => {
@@ -96,6 +96,12 @@ describe('composer draft helpers', () => {
     expect(parseComposerDraft(payload)?.assignedMentionIds).toEqual([])
   })
 
+  it('defaults the first active mention to the follow-up owner', () => {
+    expect(normalizeAssignedMentionIds([2], [])).toEqual([2])
+    expect(normalizeAssignedMentionIds([2, 3], [])).toEqual([2])
+    expect(normalizeAssignedMentionIds([2, 3], [3])).toEqual([3])
+  })
+
   it('prunes mention and assignment state when mention text is removed', () => {
     const participants = [
       {
@@ -143,7 +149,7 @@ describe('composer draft helpers', () => {
       participants,
     })).toEqual({
       mentionIds: [2],
-      assignedMentionIds: [],
+      assignedMentionIds: [2],
     })
   })
 })

@@ -6,7 +6,7 @@ import { EntityAvatar } from '@/components/entity/EntityAvatar'
 import { EmojiPicker } from '@/components/ui/EmojiPicker'
 import { useAudioRecorder } from '@/lib/use-audio-recorder'
 import { getEntityAttachmentHint, type AttachmentCapabilityKind } from '@/lib/entity-capabilities'
-import { deriveComposerMentionState, parseComposerDraft, serializeComposerDraft } from './MessageComposerDraft'
+import { deriveComposerMentionState, normalizeAssignedMentionIds, parseComposerDraft, serializeComposerDraft } from './MessageComposerDraft'
 import type { PendingFile } from './MessageComposerDraft'
 import type { Entity } from '@/lib/types'
 import type { Participant, Message, Attachment } from '@/lib/types'
@@ -77,7 +77,7 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
     if (draft) {
       setText(draft.text || '')
       setMentionIds(draft.mentionIds || [])
-      setAssignedMentionIds((draft.assignedMentionIds || []).filter((id) => (draft.mentionIds || []).includes(id)))
+      setAssignedMentionIds(normalizeAssignedMentionIds(draft.mentionIds || [], draft.assignedMentionIds || []))
       setPendingFiles(draft.attachments || [])
     } else {
       setText('')
@@ -175,7 +175,7 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
     setText(editPrefill.text)
     setPendingFiles(editPrefill.attachments || [])
     setMentionIds(editPrefill.mentionIds || [])
-    setAssignedMentionIds((editPrefill.assignedMentionIds || []).filter((id) => (editPrefill.mentionIds || []).includes(id)))
+    setAssignedMentionIds(normalizeAssignedMentionIds(editPrefill.mentionIds || [], editPrefill.assignedMentionIds || []))
     setMentionQuery(null)
     setMentionStart(-1)
     queueMicrotask(() => {
@@ -206,8 +206,9 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
     const displayName = entityDisplayName(participant.entity)
     const newText = `${before}@${displayName} ${after}`
     setText(newText)
-    setMentionIds((prev) => prev.includes(participant.entity_id) ? prev : [...prev, participant.entity_id])
-    setAssignedMentionIds((prev) => prev.filter((id) => id !== participant.entity_id))
+    const nextMentionIds = mentionIds.includes(participant.entity_id) ? mentionIds : [...mentionIds, participant.entity_id]
+    setMentionIds(nextMentionIds)
+    setAssignedMentionIds((prev) => normalizeAssignedMentionIds(nextMentionIds, prev))
     setMentionQuery(null)
     setMentionStart(-1)
     // Focus and set cursor after inserted mention
@@ -219,7 +220,7 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
         ta.setSelectionRange(cursorPos, cursorPos)
       }
     }, 0)
-  }, [text, mentionStart])
+  }, [text, mentionStart, mentionIds])
 
   const insertEmoji = useCallback((emoji: string) => {
     const ta = textareaRef.current
@@ -276,7 +277,7 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
       uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
       enableMentions && mentionIds.length > 0 ? mentionIds : undefined,
       enableMentions && mentionIds.length > 0
-        ? (mentionIds.length > 1 ? assignedMentionIds.filter((id) => mentionIds.includes(id)) : [])
+        ? normalizeAssignedMentionIds(mentionIds, assignedMentionIds)
         : undefined,
     )
     setText('')
@@ -548,7 +549,7 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
           {mentionIds.map((eid) => {
             const p = participants.find((pp) => pp.entity_id === eid)
             const canChooseFollowUp = mentionIds.length > 1
-            const assigned = canChooseFollowUp && assignedMentionIds.includes(eid)
+            const assigned = mentionIds.length === 1 || assignedMentionIds.includes(eid)
             return (
               <span
                 key={eid}
@@ -574,7 +575,6 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
                 ) : (
                   <span>
                     @{entityDisplayName(p?.entity)}
-                    <span className="ml-1 opacity-70">{t('composer.mentioned')}</span>
                   </span>
                 )}
                 <button
@@ -583,8 +583,10 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
                     setMentionIds((prev) => prev.filter((id) => id !== eid))
                     setAssignedMentionIds((prev) => {
                       const nextMentionIds = mentionIds.filter((id) => id !== eid)
-                      if (nextMentionIds.length <= 1) return []
-                      return prev.filter((id) => id !== eid && nextMentionIds.includes(id))
+                      return normalizeAssignedMentionIds(
+                        nextMentionIds,
+                        prev.filter((id) => id !== eid),
+                      )
                     })
                   }}
                   className="hover:text-[var(--color-error)] cursor-pointer"

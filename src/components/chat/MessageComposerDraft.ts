@@ -100,6 +100,12 @@ function mentionNameExists(text: string, name: string): boolean {
   return text.includes(`@${name}`)
 }
 
+export function normalizeAssignedMentionIds(mentionIds: number[], assignedMentionIds: number[] = []): number[] {
+  if (mentionIds.length === 0) return []
+  const activeAssignedMentionIds = assignedMentionIds.filter((id) => mentionIds.includes(id))
+  return activeAssignedMentionIds.length > 0 ? activeAssignedMentionIds : [mentionIds[0]]
+}
+
 export function deriveComposerMentionState(params: {
   text: string
   mentionIds: number[]
@@ -115,12 +121,8 @@ export function deriveComposerMentionState(params: {
     })
     : params.mentionIds
 
-  const activeAssignedMentionIds = activeMentionIds.length > 1
-    ? params.assignedMentionIds.filter((id) => activeMentionIds.includes(id))
-    : []
-
   return {
     mentionIds: activeMentionIds,
-    assignedMentionIds: activeAssignedMentionIds,
+    assignedMentionIds: normalizeAssignedMentionIds(activeMentionIds, params.assignedMentionIds),
   }
 }
