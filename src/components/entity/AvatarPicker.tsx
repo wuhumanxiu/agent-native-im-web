@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Camera, Upload, Loader2, X } from 'lucide-react'
+import { Camera, ChevronLeft, ChevronRight, Upload, Loader2, X } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 import * as api from '@/lib/api'
 import { cn, previewAvatarUrl } from '@/lib/utils'
@@ -16,6 +16,8 @@ const SYSTEM_BOT_AVATARS = Array.from({ length: 32 }, (_, index) => {
   const id = String(index + 1).padStart(2, '0')
   return `/bot-avatars/ani-bot-${id}.png`
 })
+
+const SYSTEM_BOT_AVATARS_PER_PAGE = 12
 
 interface Props {
   currentUrl?: string
@@ -38,8 +40,15 @@ export function AvatarPicker({ currentUrl, onSelect, size = 'md', presetMode = '
   const displayUrl = previewAvatarUrl(currentUrl)
   const [uploading, setUploading] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
+  const [systemAvatarPage, setSystemAvatarPage] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
   const pickerRef = useRef<HTMLDivElement>(null)
+
+  const systemAvatarPageCount = Math.ceil(SYSTEM_BOT_AVATARS.length / SYSTEM_BOT_AVATARS_PER_PAGE)
+  const visibleSystemBotAvatars = SYSTEM_BOT_AVATARS.slice(
+    systemAvatarPage * SYSTEM_BOT_AVATARS_PER_PAGE,
+    (systemAvatarPage + 1) * SYSTEM_BOT_AVATARS_PER_PAGE,
+  )
 
   // Handle click outside
   useEffect(() => {
@@ -64,6 +73,15 @@ export function AvatarPicker({ currentUrl, onSelect, size = 'md', presetMode = '
       document.removeEventListener('keydown', handleEscape)
     }
   }, [showPicker])
+
+  useEffect(() => {
+    if (!showPicker || presetMode !== 'bot' || !currentUrl) return
+
+    const selectedIndex = SYSTEM_BOT_AVATARS.indexOf(currentUrl)
+    if (selectedIndex >= 0) {
+      setSystemAvatarPage(Math.floor(selectedIndex / SYSTEM_BOT_AVATARS_PER_PAGE))
+    }
+  }, [currentUrl, presetMode, showPicker])
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -136,7 +154,7 @@ export function AvatarPicker({ currentUrl, onSelect, size = 'md', presetMode = '
       {showPicker && (
         <div className={cn(
           'absolute top-full left-0 mt-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-lg z-50 overflow-hidden',
-          presetMode === 'bot' ? 'w-72' : 'w-56',
+          presetMode === 'bot' ? 'w-64' : 'w-56',
         )}>
           <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
             <span className="text-[10px] font-semibold text-[var(--color-text-muted)] uppercase">{t('bot.avatar')}</span>
@@ -165,27 +183,50 @@ export function AvatarPicker({ currentUrl, onSelect, size = 'md', presetMode = '
           </div>
 
           {presetMode === 'bot' ? (
-            <div className="px-3 py-3">
+            <div className="px-3 py-2.5">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                   {t('bot.systemAvatars')}
                 </span>
-                <span className="text-[10px] text-[var(--color-text-muted)]">{SYSTEM_BOT_AVATARS.length}</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setSystemAvatarPage((page) => Math.max(0, page - 1))}
+                    disabled={systemAvatarPage === 0}
+                    className="flex h-5 w-5 items-center justify-center rounded-md text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-hover)] disabled:cursor-not-allowed disabled:opacity-35"
+                    aria-label="Previous system avatars"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="min-w-8 text-center text-[10px] tabular-nums text-[var(--color-text-muted)]">
+                    {systemAvatarPage + 1}/{systemAvatarPageCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSystemAvatarPage((page) => Math.min(systemAvatarPageCount - 1, page + 1))}
+                    disabled={systemAvatarPage === systemAvatarPageCount - 1}
+                    className="flex h-5 w-5 items-center justify-center rounded-md text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-hover)] disabled:cursor-not-allowed disabled:opacity-35"
+                    aria-label="Next system avatars"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-4 gap-2">
-                {SYSTEM_BOT_AVATARS.map((url, index) => {
+              <div className="grid grid-cols-4 gap-1.5">
+                {visibleSystemBotAvatars.map((url, index) => {
+                  const avatarNumber = systemAvatarPage * SYSTEM_BOT_AVATARS_PER_PAGE + index + 1
                   const selected = currentUrl === url
                   return (
                     <button
                       key={url}
                       onClick={() => handleSystemAvatarSelect(url)}
                       className={cn(
-                        'aspect-square rounded-2xl border bg-[var(--color-bg-input)] p-1.5 cursor-pointer transition-all hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-sm',
+                        'aspect-square rounded-xl border bg-[var(--color-bg-input)] p-1 cursor-pointer transition-all hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-sm',
                         selected ? 'border-[var(--color-accent)] ring-2 ring-[var(--color-accent)]/20' : 'border-[var(--color-border)]',
                       )}
-                      title={`${t('bot.systemAvatar')} ${index + 1}`}
+                      title={`${t('bot.systemAvatar')} ${avatarNumber}`}
                     >
-                      <img src={url} alt="" className="h-full w-full rounded-xl object-cover" />
+                      <img src={url} alt="" className="h-full w-full rounded-lg object-cover" />
                     </button>
                   )
                 })}
