@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/auth'
 import { usePresenceStore } from '@/store/presence'
 import * as api from '@/lib/api'
 import { getCachedEntities, cacheEntities } from '@/lib/cache'
-import type { Entity, PresenceStateValue } from '@/lib/types'
+import type { Conversation, Entity, PresenceStateValue } from '@/lib/types'
 import { EntityAvatar } from './EntityAvatar'
 import { SkeletonLoader } from '@/components/ui/SkeletonLoader'
 import { entityDisplayName, cn } from '@/lib/utils'
@@ -31,11 +31,54 @@ export function compareBotsStable(a: Entity, b: Entity): number {
   return botStableSortKey(a).localeCompare(botStableSortKey(b))
 }
 
+type BotInteractionTimes = Record<number, number>
+
+function conversationActivityTime(conversation: Conversation): number {
+  return new Date(conversation.last_message?.created_at || conversation.updated_at || conversation.created_at).getTime()
+}
+
+export function buildBotInteractionTimes(conversations: Conversation[]): BotInteractionTimes {
+  const times: BotInteractionTimes = {}
+
+  for (const conversation of conversations) {
+    const activityTime = conversationActivityTime(conversation)
+    if (!Number.isFinite(activityTime)) continue
+
+    for (const participant of conversation.participants || []) {
+      if (participant.entity?.entity_type === 'user') continue
+      times[participant.entity_id] = Math.max(times[participant.entity_id] || 0, activityTime)
+    }
+  }
+
+  return times
+}
+
+export function compareBotsForList(
+  a: Entity,
+  b: Entity,
+  options: {
+    interactionTimes: BotInteractionTimes
+    getPresenceState: (entityId: number) => PresenceStateValue
+  },
+): number {
+  const onlineA = options.getPresenceState(a.id) === 'online'
+  const onlineB = options.getPresenceState(b.id) === 'online'
+  if (onlineA !== onlineB) return onlineA ? -1 : 1
+
+  const interactionA = options.interactionTimes[a.id] || 0
+  const interactionB = options.interactionTimes[b.id] || 0
+  if (interactionA !== interactionB) return interactionB - interactionA
+
+  return compareBotsStable(a, b)
+}
+
 export function BotList({ selectedId, onSelect, onCreated, refreshTrigger }: Props) {
   const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)!
   const getPresenceState = usePresenceStore((s) => s.getPresenceState)
+  const presenceVersion = usePresenceStore((s) => `${Array.from(s.known).join(',')}|${Array.from(s.online).join(',')}`)
   const [entities, setEntities] = useState<Entity[]>([])
+  const [botInteractionTimes, setBotInteractionTimes] = useState<BotInteractionTimes>({})
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
@@ -78,6 +121,15 @@ export function BotList({ selectedId, onSelect, onCreated, refreshTrigger }: Pro
       // Cache entities for offline use
       if (list.length > 0) {
         cacheEntities(list)
+      }
+
+      try {
+        const convRes = await api.listConversations(token)
+        if (convRes.ok && convRes.data) {
+          setBotInteractionTimes(buildBotInteractionTimes(Array.isArray(convRes.data) ? convRes.data : []))
+        }
+      } catch {
+        // Keep entity list usable if conversation metadata is temporarily unavailable.
       }
 
       // Fetch presence for all bot entities so the online dot is accurate
@@ -136,10 +188,15 @@ export function BotList({ selectedId, onSelect, onCreated, refreshTrigger }: Pro
       )
     : bots
 
-  // Keep list order stable while presence refreshes; online state only updates badges.
+  const getPresenceStateForSort = useCallback((entityId: number) => getPresenceState(entityId), [getPresenceState, presenceVersion])
+
+  // Product priority: online bots first, then most recently interacted bots.
   const activeBots = filtered
     .filter((e) => e.status !== 'disabled')
-    .sort(compareBotsStable)
+    .sort((a, b) => compareBotsForList(a, b, {
+      interactionTimes: botInteractionTimes,
+      getPresenceState: getPresenceStateForSort,
+    }))
   const disabledBots = filtered
     .filter((e) => e.status === 'disabled')
     .sort(compareBotsStable)
