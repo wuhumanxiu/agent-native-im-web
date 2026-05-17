@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
+import { useState, useRef, useEffect, useCallback, type MouseEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -19,7 +19,7 @@ import type { Entity, EntityCardPayload, Message } from '@/lib/types'
 import { ReactionBar } from './ReactionBar'
 import {
   FileText, Download, Play, Pause,
-  Brain, Check, ChevronDown, ChevronUp, CornerUpLeft, Ban, CloudOff, Clock, RotateCcw, MoreHorizontal, Contact, Bot, User, ExternalLink, MessageSquare, UserPlus, Loader2,
+  Brain, Check, ChevronDown, ChevronUp, CornerUpLeft, Ban, CloudOff, Clock, RotateCcw, MoreHorizontal, Contact, Bot, User, ExternalLink, MessageSquare, UserPlus, Loader2, Copy,
 } from 'lucide-react'
 
 /** Max collapsed height in px (~10 lines of text) */
@@ -114,30 +114,56 @@ function LinkifiedText({ text }: { text: string }) {
 }
 
 function PlainTextLinkPreview({ link }: { link: TextLink }) {
+  const { t } = useTranslation()
   const host = getLinkHost(link.href)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyLink = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    try {
+      await navigator.clipboard.writeText(link.href)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      setCopied(false)
+    }
+  }
 
   return (
-    <a
-      href={link.href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group/link block min-w-[220px] max-w-[320px] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)]/70 transition-colors hover:border-[var(--color-accent)]/45"
-    >
-      <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
-        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-[var(--color-accent-dim)]">
-          <ExternalLink className="h-3.5 w-3.5 text-[var(--color-accent)]" />
+    <div className="group/link relative min-w-[220px] max-w-[320px] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)]/70 transition-colors hover:border-[var(--color-accent)]/45">
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block"
+      >
+        <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2 pr-10">
+          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-[var(--color-accent-dim)]">
+            <ExternalLink className="h-3.5 w-3.5 text-[var(--color-accent)]" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-semibold text-[var(--color-text-primary)]">{host}</p>
+            <p className="truncate text-[10px] text-[var(--color-text-muted)]">{link.href}</p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold text-[var(--color-text-primary)]">{host}</p>
-          <p className="truncate text-[10px] text-[var(--color-text-muted)]">{link.href}</p>
+        <div className="px-3 py-2.5">
+          <p className="break-all text-sm leading-relaxed text-[var(--color-accent-hover)] group-hover/link:text-[var(--color-accent)]">
+            {link.text}
+          </p>
         </div>
-      </div>
-      <div className="px-3 py-2.5">
-        <p className="break-all text-sm leading-relaxed text-[var(--color-accent-hover)] group-hover/link:text-[var(--color-accent)]">
-          {link.text}
-        </p>
-      </div>
-    </a>
+      </a>
+      <button
+        type="button"
+        onClick={handleCopyLink}
+        aria-label={copied ? t('common.copied') : t('common.copyLink')}
+        title={copied ? t('common.copied') : t('common.copyLink')}
+        className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)]/95 text-[var(--color-text-muted)] opacity-80 shadow-sm transition hover:border-[var(--color-accent)]/45 hover:text-[var(--color-accent)] hover:opacity-100"
+      >
+        {copied ? <Check className="h-3.5 w-3.5 text-[var(--color-success)]" /> : <Copy className="h-3.5 w-3.5" />}
+      </button>
+    </div>
   )
 }
 

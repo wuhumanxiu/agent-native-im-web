@@ -694,6 +694,7 @@
   },
   "common": {
     "copy": "Copy",
+    "copyLink": "Copy link",
     "you": "(you)",
     "loading": "Loading...",
     "error": "Error",

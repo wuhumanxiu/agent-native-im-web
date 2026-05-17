@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom'
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessageBubble } from './MessageBubble'
 import type { Entity, Message } from '@/lib/types'
 
@@ -35,6 +35,14 @@ function makeMessage(overrides: Partial<Message> = {}): Message {
 }
 
 describe('MessageBubble plain text links', () => {
+  beforeEach(() => {
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    })
+  })
+
   it('renders URLs inside normal plain text as clickable links', () => {
     render(
       <MessageBubble
@@ -62,5 +70,21 @@ describe('MessageBubble plain text links', () => {
     const link = screen.getByRole('link', { name: /example.com/i })
     expect(link).toHaveAttribute('href', 'https://www.example.com/share')
     expect(screen.getByText('example.com')).toBeInTheDocument()
+  })
+
+  it('copies the standalone link from the preview card action', async () => {
+    render(
+      <MessageBubble
+        message={makeMessage({ layers: { summary: 'https://example.com/share', data: { body: 'https://example.com/share' } } })}
+        isSelf
+        showSender={false}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.copyLink' }))
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://example.com/share')
+    })
   })
 })
