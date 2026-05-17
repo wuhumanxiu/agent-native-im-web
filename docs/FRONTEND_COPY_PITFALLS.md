@@ -104,7 +104,7 @@ And avoids:
 
 ## Related Files
 
-- [MessageBubble.tsx](dev/agent-native-im-web/src/components/chat/MessageBubble.tsx)
-- [message-copy.ts](dev/agent-native-im-web/src/components/chat/message-copy.ts)
-- [message-copy.test.ts](dev/agent-native-im-web/src/components/chat/message-copy.test.ts)
-- [MessageActionMenu.tsx](dev/agent-native-im-web/src/components/ui/MessageActionMenu.tsx)
+- [MessageBubble.tsx](../src/components/chat/MessageBubble.tsx)
+- [message-copy.ts](../src/components/chat/message-copy.ts)
+- [message-copy.test.ts](../src/components/chat/message-copy.test.ts)
+- [MessageActionMenu.tsx](../src/components/ui/MessageActionMenu.tsx)

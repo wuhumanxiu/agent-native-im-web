@@ -125,7 +125,7 @@ For uploads larger than 1 MB, ensure nginx `client_max_body_size` is configured 
 
 ## Supporting Docs
 
-- [../agent-native-im/docs/PRODUCT_BASELINE.md](../agent-native-im/docs/PRODUCT_BASELINE.md)
+- [agent-native-im PRODUCT_BASELINE](https://github.com/wuhumanxiu/agent-native-im/blob/main/docs/PRODUCT_BASELINE.md)
 - [docs/user-stories.md](docs/user-stories.md)
 - [test-cases.md](test-cases.md)
 - [docs/FRONTEND_COPY_PITFALLS.md](docs/FRONTEND_COPY_PITFALLS.md)
@@ -151,8 +151,8 @@ Current product truth:
 
 Before broad public release, use these documents as the current source of truth:
 
-- `../../_experience/ani-attachment-capability-matrix-2026-03-20.md`
-- `../../_experience/ani-public-release-checklist-2026-03-20.md`
+- workspace `docs/experience/ani-attachment-capability-matrix-2026-03-20.md`
+- workspace `docs/experience/ani-public-release-checklist-2026-03-20.md`
 
 ## Related Projects
 
@@ -160,7 +160,7 @@ Before broad public release, use these documents as the current source of truth:
 |---|---|
 | [agent-native-im](https://github.com/wuhumanxiu/agent-native-im) | Backend (Go) |
 | [agent-native-im-mobile](https://github.com/wuhumanxiu/agent-native-im-mobile) | Mobile app (`ANI`) |
-| [agent-native-im-sdk-python](https://github.com/wuhumanxiu/agent-native-im-sdk-python) | Python SDK |
+| [ani-agent-sdk-python](https://github.com/wuhumanxiu/ani-agent-sdk-python) | Python SDK |
 
 ## License
 
