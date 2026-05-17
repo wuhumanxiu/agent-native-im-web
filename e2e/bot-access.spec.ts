@@ -63,7 +63,6 @@ test.describe('Bot access pack', () => {
 
     await expect(page.getByText(/token rotated\./i)).toBeVisible({ timeout: 10_000 })
     await expect(page.getByText(/openclaw plugin.*new token/i)).toBeVisible({ timeout: 10_000 })
-    await page.getByRole('button', { name: /show advanced options/i }).click()
     await expect(page.getByTestId('copy-bot-token-button')).toBeEnabled()
     await expect(page.getByTestId('copy-bot-access-button')).toBeEnabled()
     await expect(page.getByTestId('download-quickstart-button')).toBeEnabled()
