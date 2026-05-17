@@ -141,7 +141,7 @@ export function ConversationList({ conversations, activeId, myEntityId, scope = 
       </div>
 
       {/* Search — polished rounded style */}
-      <div className="px-3 pt-3 pb-3 flex-shrink-0">
+      <div className="px-3 pb-2 flex-shrink-0">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
           <input
