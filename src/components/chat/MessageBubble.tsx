@@ -19,7 +19,7 @@ import type { Entity, EntityCardPayload, Message } from '@/lib/types'
 import { ReactionBar } from './ReactionBar'
 import {
   FileText, Download, Play, Pause,
-  Brain, Check, ChevronDown, ChevronUp, CornerUpLeft, Ban, CloudOff, Clock, RotateCcw, MoreHorizontal, Contact, Bot, User, ExternalLink, MessageSquare, UserPlus, Loader2, Copy,
+  Brain, Check, ChevronDown, ChevronUp, CornerUpLeft, Ban, CloudOff, Clock, RotateCcw, MoreHorizontal, Contact, Bot, User, ExternalLink, MessageSquare, UserPlus, Loader2, Copy, X,
 } from 'lucide-react'
 
 /** Max collapsed height in px (~10 lines of text) */
@@ -32,6 +32,46 @@ interface TextLink {
   href: string
   start: number
   end: number
+}
+
+interface ForwardedRecord {
+  message_id?: number
+  sender_id?: number
+  sender_name: string
+  sender_avatar_url?: string
+  text: string
+  created_at?: string
+  is_self?: boolean
+}
+
+interface ForwardedPayload {
+  title?: string
+  mode?: 'merged' | 'separate'
+  records?: ForwardedRecord[]
+}
+
+function parseForwardedPayload(raw: unknown, body: string): ForwardedPayload | null {
+  if (!raw || typeof raw !== 'object') return null
+  const payload = raw as ForwardedPayload
+  const mode = payload.mode
+  if (mode !== 'merged') return null
+
+  const records = Array.isArray(payload.records)
+    ? payload.records.filter((item): item is ForwardedRecord => (
+      !!item && typeof item === 'object' && typeof item.sender_name === 'string' && typeof item.text === 'string'
+    ))
+    : []
+
+  if (records.length > 0) return { ...payload, records }
+
+  const parsed: ForwardedRecord[] = body.split(/\n{2,}/).flatMap((line, index) => {
+    const [name, ...rest] = line.split(': ')
+    const text = rest.join(': ').trim()
+    if (!name || !text) return []
+    return [{ message_id: index, sender_name: name.trim(), text }]
+  })
+
+  return parsed.length > 0 ? { ...payload, records: parsed } : null
 }
 
 function normalizeLinkHref(text: string): string {
@@ -437,6 +477,7 @@ export function MessageBubble({ message, isSelf, myEntityId, replyMessage, inter
   const [isOverflow, setIsOverflow] = useState(false)
   const [popoverAnchor, setPopoverAnchor] = useState<DOMRect | null>(null)
   const [actionMenuRect, setActionMenuRect] = useState<DOMRect | null>(null)
+  const [forwardedOpen, setForwardedOpen] = useState(false)
   const bubbleRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const layers = message.layers || {}
@@ -523,9 +564,15 @@ export function MessageBubble({ message, isSelf, myEntityId, replyMessage, inter
     )
   }
 
+  const forwardedPayloadForDialog = parseForwardedPayload(
+    layers.data?.forwarded,
+    (layers.data?.body as string) || layers.summary || '',
+  )
+
   const renderContent = () => {
     const body = (layers.data?.body as string) || layers.summary || ''
     const entityCard = layers.data?.entity_card
+    const forwardedPayload = forwardedPayloadForDialog
 
     // Bot/service messages default to markdown rendering
     const effectiveType = (message.content_type === 'text' && isBot) ? 'markdown' : message.content_type
@@ -540,6 +587,38 @@ export function MessageBubble({ message, isSelf, myEntityId, replyMessage, inter
             onViewDetails={onEntityViewDetails}
           />
         </div>
+      )
+    }
+
+    if (forwardedPayload) {
+      const records = forwardedPayload.records || []
+      const preview = records.slice(0, 3)
+      return (
+        <button
+          type="button"
+          onClick={() => setForwardedOpen(true)}
+          className="min-w-[240px] max-w-[340px] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] text-left shadow-sm transition-colors hover:border-[var(--color-accent)]/50 cursor-pointer"
+        >
+          <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent-dim)]">
+              <MessageSquare className="h-4 w-4 text-[var(--color-accent)]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
+                {forwardedPayload.title || t('message.forwardChatRecord')}
+              </p>
+              <p className="text-[11px] text-[var(--color-text-muted)]">{t('message.forwardOpenRecord')}</p>
+            </div>
+          </div>
+          <div className="divide-y divide-[var(--color-border)]">
+            {preview.map((item, index) => (
+              <div key={`${item.message_id ?? index}`} className="px-3 py-2">
+                <p className="truncate text-xs font-semibold text-[var(--color-text-secondary)]">{item.sender_name}</p>
+                <p className="mt-0.5 line-clamp-1 text-xs text-[var(--color-text-muted)]">{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </button>
       )
     }
 
@@ -1012,6 +1091,74 @@ export function MessageBubble({ message, isSelf, myEntityId, replyMessage, inter
         onViewDetails={onEntityViewDetails}
         onShareCard={onEntityShareCard}
       />
+    )}
+
+    {forwardedOpen && forwardedPayloadForDialog && (
+      <div
+        className="fixed inset-0 z-[130] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+        onClick={() => setForwardedOpen(false)}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="max-h-[82vh] w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-2xl"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex items-center gap-3 border-b border-[var(--color-border)] px-4 py-3">
+            <MessageSquare className="h-4 w-4 text-[var(--color-accent)]" />
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
+                {forwardedPayloadForDialog.title || t('message.forwardChatRecord')}
+              </h3>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                {t('message.selectedCount', { count: forwardedPayloadForDialog.records?.length || 0 })}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setForwardedOpen(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[var(--color-bg-hover)] cursor-pointer"
+              aria-label={t('common.close')}
+            >
+              <X className="h-4 w-4 text-[var(--color-text-muted)]" />
+            </button>
+          </div>
+          <div className="max-h-[64vh] overflow-y-auto bg-[var(--color-bg-primary)] px-4 py-3">
+            <div className="space-y-3">
+              {forwardedPayloadForDialog.records?.map((item, index) => (
+                <div key={`${item.message_id ?? index}`} className={cn('flex gap-2', item.is_self ? 'flex-row-reverse' : '')}>
+                  <EntityAvatar
+                    entity={{
+                      id: item.sender_id || index,
+                      entity_type: 'user',
+                      name: item.sender_name,
+                      display_name: item.sender_name,
+                      status: 'active',
+                      avatar_url: item.sender_avatar_url,
+                      metadata: {},
+                      created_at: '',
+                      updated_at: '',
+                    } as Entity}
+                    size="sm"
+                  />
+                  <div className={cn('max-w-[78%]', item.is_self ? 'items-end' : 'items-start')}>
+                    <div className={cn('mb-1 flex items-center gap-2', item.is_self ? 'justify-end' : '')}>
+                      <span className="text-[11px] font-semibold text-[var(--color-text-secondary)]">{item.sender_name}</span>
+                      {item.created_at && <span className="text-[10px] text-[var(--color-text-muted)]">{formatTime(item.created_at)}</span>}
+                    </div>
+                    <div className={cn(
+                      'rounded-lg px-3 py-2 text-sm leading-relaxed text-[var(--color-text-primary)] shadow-sm whitespace-pre-wrap',
+                      item.is_self ? 'rounded-tr-sm bg-[var(--color-bubble-self)]' : 'rounded-tl-sm border border-[var(--color-border-subtle)] bg-[var(--color-bubble-other)]',
+                    )}>
+                      {item.text}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     )}
 
     {/* Long-press / right-click action menu */}

@@ -12,7 +12,7 @@ import { usePresenceStore } from '@/store/presence'
 import { useConversationsStore } from '@/store/conversations'
 import * as api from '@/lib/api'
 import type { Conversation, ActiveStream, Message, PresenceStateValue, MentionRef, Entity, EntityCardPayload } from '@/lib/types'
-import { entityDisplayName, isBotOrService, cn } from '@/lib/utils'
+import { entityDisplayName, isBotOrService, cn, formatTime } from '@/lib/utils'
 import { cacheMessages, getCachedMessages, enqueueOutboxMessage, getOutboxMessageByTempId, deleteOutboxMessage, updateOutboxMessage } from '@/lib/cache'
 import { DotsAnimation } from '@/components/ui/DotsAnimation'
 import { SkeletonLoader } from '@/components/ui/SkeletonLoader'
@@ -24,6 +24,16 @@ import { getRecalledDraft } from './recalled-message'
 const EMPTY_MESSAGES: Message[] = []
 const REVOKE_NOTICE_KEY = 'ani:revoke-notice:v1'
 type ForwardMode = 'merged' | 'separate'
+
+interface ForwardRecord {
+  message_id: number
+  sender_id: number
+  sender_name: string
+  sender_avatar_url?: string
+  text: string
+  created_at: string
+  is_self: boolean
+}
 
 interface Props {
   conversation: Conversation
@@ -238,6 +248,16 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
     return cleanNote ? [...bodies, cleanNote] : bodies
   }, [getMessageForwardText])
 
+  const buildForwardRecords = useCallback((items: Message[]): ForwardRecord[] => items.map((msg) => ({
+    message_id: msg.id,
+    sender_id: msg.sender_id,
+    sender_name: entityDisplayName(msg.sender),
+    sender_avatar_url: msg.sender?.avatar_url,
+    text: getMessageForwardText(msg),
+    created_at: msg.created_at,
+    is_self: msg.sender_id === myEntity.id,
+  })), [getMessageForwardText, myEntity.id])
+
   const resolveForwardMentionIds = useCallback((target: Conversation | undefined, note: string) => {
     if (!target || !note.includes('@')) return []
     const ids = new Set<number>()
@@ -289,15 +309,24 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
     setForwardSending(true)
     const mentionIds = resolveForwardMentionIds(target, forwardNote)
     const bodies = buildForwardBodies(forwardingMessages, forwardMode, forwardNote)
+    const records = buildForwardRecords(forwardingMessages)
     try {
-      for (const body of bodies) {
+      for (const [index, body] of bodies.entries()) {
+        const forwarded = {
+          title: t('message.forwardChatRecord'),
+          source_conversation_id: conversation.id,
+          message_ids: forwardingMessages.map((msg) => msg.id),
+          mode: forwardMode,
+          records: forwardMode === 'merged' ? records : [records[index]].filter(Boolean),
+          note: forwardMode === 'merged' ? forwardNote.trim() || undefined : undefined,
+        }
         const res = await api.sendMessage(token, {
           conversation_id: target.id,
           conversation_public_id: target.public_id || (typeof target.metadata?.public_id === 'string' ? target.metadata.public_id : undefined),
           content_type: 'text',
           layers: {
             summary: body,
-            data: { body, forwarded: { source_conversation_id: conversation.id, message_ids: forwardingMessages.map((msg) => msg.id), mode: forwardMode } },
+            data: { body, forwarded },
           },
           mentions: mentionIds,
         })
@@ -315,7 +344,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
     } finally {
       setForwardSending(false)
     }
-  }, [addMessage, buildForwardBodies, clearSelection, conversation.id, conversations, forwardMode, forwardNote, forwardSending, forwardingMessages, forwardTargetId, resolveForwardMentionIds, token, updateConversation])
+  }, [addMessage, buildForwardBodies, buildForwardRecords, clearSelection, conversation.id, conversations, forwardMode, forwardNote, forwardSending, forwardingMessages, forwardTargetId, resolveForwardMentionIds, t, token, updateConversation])
 
   // Active streams for this conversation
   const convStreams = useMemo<ActiveStream[]>(
@@ -1233,7 +1262,7 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-2xl overflow-hidden"
+            className="w-full max-w-lg rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-2xl overflow-hidden"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-border)]">
@@ -1256,20 +1285,33 @@ export function ChatThread({ conversation, onBack, onCancelStream, onTyping, typ
               </button>
             </div>
             <div className="p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-2 rounded-xl bg-[var(--color-bg-tertiary)] p-1">
+              <div className="grid grid-cols-2 gap-2 rounded-xl bg-[var(--color-bg-primary)] border border-[var(--color-border)] p-1">
                 {(['merged', 'separate'] as ForwardMode[]).map((mode) => (
                   <button
                     key={mode}
                     onClick={() => setForwardMode(mode)}
                     className={cn(
-                      'rounded-lg px-3 py-2 text-xs font-medium cursor-pointer transition-colors',
+                      'rounded-lg px-3 py-2 text-xs font-semibold cursor-pointer transition-colors',
                       forwardMode === mode
-                        ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] shadow-sm'
-                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
+                        ? 'bg-[var(--color-accent)] text-white shadow-sm'
+                        : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]',
                     )}
                   >
                     {t(`message.forwardMode.${mode}`)}
                   </button>
+                ))}
+              </div>
+              <div className="max-h-36 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border)]">
+                {forwardingMessages.map((msg) => (
+                  <div key={msg.id} className="px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="truncate text-xs font-semibold text-[var(--color-text-primary)]">{entityDisplayName(msg.sender)}</span>
+                      <span className="shrink-0 text-[10px] text-[var(--color-text-muted)]">{formatTime(msg.created_at)}</span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-xs leading-5 text-[var(--color-text-secondary)]">
+                      {getMessageForwardText(msg)}
+                    </p>
+                  </div>
                 ))}
               </div>
               <div className="max-h-44 overflow-y-auto rounded-xl border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
