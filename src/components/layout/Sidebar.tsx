@@ -3,7 +3,7 @@ import { useAuthStore } from '@/store/auth'
 import { usePresenceStore } from '@/store/presence'
 import { EntityAvatar } from '@/components/entity/EntityAvatar'
 import { entityDisplayName, cn } from '@/lib/utils'
-import { Bot, Bell, Zap, Wifi, WifiOff, MessageSquare, MessagesSquare, UserPlus } from 'lucide-react'
+import { Bot, Bell, Settings2, Wifi, WifiOff, MessageSquare, MessagesSquare, UserPlus } from 'lucide-react'
 
 interface Props {
   botMode: boolean
@@ -32,13 +32,20 @@ export function Sidebar({ botMode, directMode, groupMode, friendsMode, inboxMode
   return (
     <nav role="navigation" aria-label={t('a11y.navigation')} className="relative w-[72px] flex flex-col items-center py-5 gap-3 bg-[var(--color-bg-secondary)]/92 backdrop-blur-xl border-r border-[var(--color-border)]">
       <div className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-[var(--color-border)] to-transparent" />
-      {/* Logo */}
-      <div className="relative mb-2">
-        <div className="absolute inset-0 rounded-2xl bg-[var(--color-accent)]/20 blur-xl" />
-        <div className="relative w-11 h-11 rounded-2xl bg-[var(--color-accent)] flex items-center justify-center shadow-lg shadow-[var(--color-accent)]/25">
-        <Zap className="w-5 h-5 text-white" />
-        </div>
-      </div>
+      {/* Profile */}
+      <button
+        onClick={onToggleSettings}
+        className={cn(
+          'relative mb-2 w-11 h-11 rounded-2xl flex items-center justify-center cursor-pointer transition-colors',
+          settingsMode
+            ? 'bg-[var(--color-accent)]/16 shadow-sm ring-1 ring-[var(--color-accent)]/25'
+            : 'hover:bg-[var(--color-bg-hover)]'
+        )}
+        title={entityDisplayName(entity)}
+        aria-label={t('settings.title')}
+      >
+        <EntityAvatar entity={entity} size="sm" showStatus />
+      </button>
 
       {/* Direct chats */}
       <button
@@ -136,14 +143,19 @@ export function Sidebar({ botMode, directMode, groupMode, friendsMode, inboxMode
         <Bot className="w-5 h-5" />
       </button>
 
-      {/* User avatar (clickable for settings) */}
+      {/* Settings */}
       <button
         onClick={onToggleSettings}
-        className="relative group cursor-pointer rounded-2xl p-1.5 bg-[var(--color-bg-primary)]/70 border border-[var(--color-border)]"
-        title={entityDisplayName(entity)}
+        className={cn(
+          'w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-colors',
+          settingsMode
+            ? 'bg-[var(--color-accent)]/16 text-[var(--color-accent)] shadow-sm'
+            : 'hover:bg-[var(--color-bg-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-accent)]'
+        )}
+        title={t('settings.title')}
         aria-label={t('settings.title')}
       >
-        <EntityAvatar entity={entity} size="sm" showStatus />
+        <Settings2 className="w-5 h-5" />
       </button>
 
       {/* Connection status */}
