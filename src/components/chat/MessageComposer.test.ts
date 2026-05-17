@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parseComposerDraft, serializeComposerDraft, type PendingFile } from './MessageComposer'
+import { deriveComposerMentionState, parseComposerDraft, serializeComposerDraft, type PendingFile } from './MessageComposerDraft'
+import type { Participant } from '@/lib/types'
 
 describe('composer draft helpers', () => {
   it('serializes text, mentions, reply preview, and uploaded attachments', () => {
@@ -82,6 +83,67 @@ describe('composer draft helpers', () => {
       mentionIds: [],
       assignedMentionIds: [],
       attachments: [],
+    })
+  })
+
+  it('does not assign mentions by default when draft payload omits assigned ids', () => {
+    const payload = serializeComposerDraft({
+      text: '@Alice please review',
+      mentionIds: [2],
+      pendingFiles: [],
+    })
+
+    expect(parseComposerDraft(payload)?.assignedMentionIds).toEqual([])
+  })
+
+  it('prunes mention and assignment state when mention text is removed', () => {
+    const participants = [
+      {
+        id: 1,
+        conversation_id: 7,
+        entity_id: 2,
+        role: 'member',
+        subscription_mode: 'mention_only',
+        joined_at: '',
+        entity: {
+          id: 2,
+          entity_type: 'user',
+          name: 'alice',
+          display_name: 'Alice',
+          status: 'active',
+          metadata: {},
+          created_at: '',
+          updated_at: '',
+        },
+      },
+      {
+        id: 2,
+        conversation_id: 7,
+        entity_id: 3,
+        role: 'member',
+        subscription_mode: 'mention_only',
+        joined_at: '',
+        entity: {
+          id: 3,
+          entity_type: 'bot',
+          name: 'triage-bot',
+          display_name: 'Triage Bot',
+          status: 'active',
+          metadata: {},
+          created_at: '',
+          updated_at: '',
+        },
+      },
+    ] satisfies Participant[]
+
+    expect(deriveComposerMentionState({
+      text: '@Alice please check',
+      mentionIds: [2, 3],
+      assignedMentionIds: [2, 3],
+      participants,
+    })).toEqual({
+      mentionIds: [2],
+      assignedMentionIds: [],
     })
   })
 })

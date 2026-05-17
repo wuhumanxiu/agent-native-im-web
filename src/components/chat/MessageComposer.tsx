@@ -6,18 +6,12 @@ import { EntityAvatar } from '@/components/entity/EntityAvatar'
 import { EmojiPicker } from '@/components/ui/EmojiPicker'
 import { useAudioRecorder } from '@/lib/use-audio-recorder'
 import { getEntityAttachmentHint, type AttachmentCapabilityKind } from '@/lib/entity-capabilities'
+import { deriveComposerMentionState, parseComposerDraft, serializeComposerDraft } from './MessageComposerDraft'
+import type { PendingFile } from './MessageComposerDraft'
 import type { Entity } from '@/lib/types'
 import type { Participant, Message, Attachment } from '@/lib/types'
 
-/** A file that has been selected and is being (or has been) uploaded. */
-export interface PendingFile {
-  file?: File
-  name: string
-  type: string
-  size: number
-  status: 'uploading' | 'uploaded' | 'failed'
-  url?: string
-}
+export type { PendingFile } from './MessageComposerDraft'
 
 export interface ComposerEditPrefill {
   id: number
@@ -46,92 +40,6 @@ interface Props {
   attachmentsEnabled?: boolean
   targetBot?: Entity | null
   editPrefill?: ComposerEditPrefill | null
-}
-
-interface DraftReplyPreview {
-  id: number
-  sender?: Message['sender']
-  layers?: Message['layers']
-}
-
-interface ComposerDraftPayload {
-  text: string
-  replyTo: DraftReplyPreview | null
-  mentionIds: number[]
-  assignedMentionIds: number[]
-  attachments: PendingFile[]
-}
-
-function toDraftAttachment(file: PendingFile): PendingFile | null {
-  if (file.status !== 'uploaded' || !file.url) return null
-  return {
-    name: file.name,
-    type: file.type,
-    size: file.size,
-    status: 'uploaded',
-    url: file.url,
-  }
-}
-
-export function serializeComposerDraft(params: {
-  text: string
-  replyTo?: Message | null
-  mentionIds: number[]
-  assignedMentionIds?: number[]
-  pendingFiles: PendingFile[]
-}): string | null {
-  const text = params.text.trim()
-  const attachments = params.pendingFiles
-    .map(toDraftAttachment)
-    .filter((item): item is PendingFile => !!item)
-  if (!text && !params.replyTo && params.mentionIds.length === 0 && attachments.length === 0) return null
-  const assignedMentionIds = params.assignedMentionIds ?? params.mentionIds
-  const payload: ComposerDraftPayload = {
-    text,
-    replyTo: params.replyTo ? { id: params.replyTo.id, sender: params.replyTo.sender, layers: params.replyTo.layers } : null,
-    mentionIds: [...params.mentionIds],
-    assignedMentionIds: assignedMentionIds.filter((id) => params.mentionIds.includes(id)),
-    attachments,
-  }
-  return JSON.stringify(payload)
-}
-
-export function parseComposerDraft(raw: string | null): ComposerDraftPayload | null {
-  if (!raw) return null
-  try {
-    const parsed = JSON.parse(raw) as Partial<ComposerDraftPayload>
-    return {
-      text: typeof parsed.text === 'string' ? parsed.text : '',
-      replyTo: parsed.replyTo ?? null,
-      mentionIds: Array.isArray(parsed.mentionIds)
-        ? parsed.mentionIds.filter((id): id is number => typeof id === 'number')
-        : [],
-      assignedMentionIds: Array.isArray(parsed.assignedMentionIds)
-        ? parsed.assignedMentionIds.filter((id): id is number => typeof id === 'number')
-        : Array.isArray(parsed.mentionIds)
-          ? parsed.mentionIds.filter((id): id is number => typeof id === 'number')
-          : [],
-      attachments: Array.isArray(parsed.attachments)
-        ? parsed.attachments
-          .filter((item): item is PendingFile => !!item && typeof item.name === 'string')
-          .map((item) => ({
-            name: item.name,
-            type: item.type || '',
-            size: typeof item.size === 'number' ? item.size : 0,
-            status: item.status === 'failed' ? 'failed' : 'uploaded',
-            url: item.url,
-          }))
-        : [],
-    }
-  } catch {
-    return {
-      text: raw,
-      replyTo: null,
-      mentionIds: [],
-      assignedMentionIds: [],
-      attachments: [],
-    }
-  }
 }
 
 function writeComposerDraft(conversationId: number | undefined, params: {
@@ -299,7 +207,7 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
     const newText = `${before}@${displayName} ${after}`
     setText(newText)
     setMentionIds((prev) => prev.includes(participant.entity_id) ? prev : [...prev, participant.entity_id])
-    setAssignedMentionIds((prev) => prev.includes(participant.entity_id) ? prev : [...prev, participant.entity_id])
+    setAssignedMentionIds((prev) => prev.filter((id) => id !== participant.entity_id))
     setMentionQuery(null)
     setMentionStart(-1)
     // Focus and set cursor after inserted mention
@@ -368,7 +276,7 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
       uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
       enableMentions && mentionIds.length > 0 ? mentionIds : undefined,
       enableMentions && mentionIds.length > 0
-        ? assignedMentionIds.filter((id) => mentionIds.includes(id))
+        ? (mentionIds.length > 1 ? assignedMentionIds.filter((id) => mentionIds.includes(id)) : [])
         : undefined,
     )
     setText('')
@@ -478,7 +386,23 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
       setMentionQuery(null)
       setMentionStart(-1)
       if (mentionIds.length > 0) setMentionIds([])
+      if (assignedMentionIds.length > 0) setAssignedMentionIds([])
       return
+    }
+    const nextMentionState = deriveComposerMentionState({
+      text: value,
+      mentionIds,
+      assignedMentionIds,
+      participants,
+    })
+    if (nextMentionState.mentionIds.length !== mentionIds.length) {
+      setMentionIds(nextMentionState.mentionIds)
+    }
+    if (
+      nextMentionState.assignedMentionIds.length !== assignedMentionIds.length ||
+      nextMentionState.assignedMentionIds.some((id, index) => assignedMentionIds[index] !== id)
+    ) {
+      setAssignedMentionIds(nextMentionState.assignedMentionIds)
     }
     // Find the last '@' that isn't preceded by a word char
     const atMatch = textBeforeCursor.match(/(^|[^a-zA-Z0-9])@([^\s@]*)$/)
@@ -623,7 +547,8 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
         <div className="flex gap-1.5 mb-2 flex-wrap">
           {mentionIds.map((eid) => {
             const p = participants.find((pp) => pp.entity_id === eid)
-            const assigned = assignedMentionIds.includes(eid)
+            const canChooseFollowUp = mentionIds.length > 1
+            const assigned = canChooseFollowUp && assignedMentionIds.includes(eid)
             return (
               <span
                 key={eid}
@@ -634,25 +559,36 @@ export function MessageComposer({ conversationId, onSend, onAudioSend, onFileUpl
                     : 'border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]',
                 )}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAssignedMentionIds((prev) => assigned ? prev.filter((id) => id !== eid) : [...prev, eid])
-                  }}
-                  className="cursor-pointer"
-                  title={assigned ? '点击改为仅通知' : '点击改为派活'}
-                >
-                  @{entityDisplayName(p?.entity)}
-                  <span className="ml-1 opacity-70">{assigned ? '派活' : '仅通知'}</span>
-                </button>
+                {canChooseFollowUp ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssignedMentionIds((prev) => assigned ? prev.filter((id) => id !== eid) : [...prev, eid])
+                    }}
+                    className="cursor-pointer"
+                    title={assigned ? t('composer.mentionMarkNotifyOnly') : t('composer.mentionMarkFollowUp')}
+                  >
+                    @{entityDisplayName(p?.entity)}
+                    <span className="ml-1 opacity-70">{assigned ? t('composer.mentionFollowUp') : t('composer.mentionOnly')}</span>
+                  </button>
+                ) : (
+                  <span>
+                    @{entityDisplayName(p?.entity)}
+                    <span className="ml-1 opacity-70">{t('composer.mentioned')}</span>
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => {
                     setMentionIds((prev) => prev.filter((id) => id !== eid))
-                    setAssignedMentionIds((prev) => prev.filter((id) => id !== eid))
+                    setAssignedMentionIds((prev) => {
+                      const nextMentionIds = mentionIds.filter((id) => id !== eid)
+                      if (nextMentionIds.length <= 1) return []
+                      return prev.filter((id) => id !== eid && nextMentionIds.includes(id))
+                    })
                   }}
                   className="hover:text-[var(--color-error)] cursor-pointer"
-                  title="移除 @"
+                  title={t('a11y.removeMention')}
                 >
                   <X className="w-2.5 h-2.5" />
                 </button>

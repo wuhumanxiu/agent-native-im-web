@@ -1,5 +1,5 @@
 import type { Attachment, Message, Participant } from '@/lib/types'
-import type { PendingFile } from './MessageComposer'
+import type { PendingFile } from './MessageComposerDraft'
 
 export interface RecalledDraft {
   text: string
