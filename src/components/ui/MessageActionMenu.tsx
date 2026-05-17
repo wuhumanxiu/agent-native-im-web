@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
-import { Reply, SmilePlus, Copy, Trash2 } from 'lucide-react'
+import { Reply, SmilePlus, Copy, Trash2, Forward, CheckSquare } from 'lucide-react'
 import type { Message } from '@/lib/types'
 
 interface Props {
@@ -13,6 +13,8 @@ interface Props {
   onReact?: (msgId: number, emoji: string) => void
   onRevoke?: (msgId: number) => void
   onCopyText?: (text: string) => void
+  onForward?: (msg: Message) => void
+  onSelect?: (msg: Message) => void
 }
 
 const QUICK_EMOJIS = ['\uD83D\uDC4D', '\u2764\uFE0F', '\uD83D\uDE02', '\uD83C\uDF89', '\uD83E\uDD14', '\uD83D\uDC40']
@@ -33,7 +35,7 @@ export function normalizeCopiedMessageText(text: string): string {
     .trim()
 }
 
-export function MessageActionMenu({ message, isSelf, anchorRect, onClose, onReply, onReact, onRevoke, onCopyText }: Props) {
+export function MessageActionMenu({ message, isSelf, anchorRect, onClose, onReply, onReact, onRevoke, onCopyText, onForward, onSelect }: Props) {
   const { t } = useTranslation()
   const menuRef = useRef<HTMLDivElement>(null)
   const [showEmojis, setShowEmojis] = useState(false)
@@ -46,6 +48,8 @@ export function MessageActionMenu({ message, isSelf, anchorRect, onClose, onRepl
   )
   const canReply = !isRevoked && onReply
   const canReact = !isRevoked && onReact
+  const canForward = !isRevoked && onForward
+  const canSelect = !isRevoked && onSelect
   const rawTextContent = message.layers?.data?.body as string || message.layers?.summary || ''
   const textContent = normalizeCopiedMessageText(rawTextContent)
 
@@ -144,6 +148,24 @@ export function MessageActionMenu({ message, isSelf, anchorRect, onClose, onRepl
             >
               <SmilePlus className="w-4 h-4 text-[var(--color-text-muted)]" />
               {t('chat.addReaction')}
+            </button>
+          )}
+          {canForward && (
+            <button
+              onClick={() => { onForward!(message); onClose() }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] cursor-pointer transition-colors min-h-[44px]"
+            >
+              <Forward className="w-4 h-4 text-[var(--color-text-muted)]" />
+              {t('message.forward')}
+            </button>
+          )}
+          {canSelect && (
+            <button
+              onClick={() => { onSelect!(message); onClose() }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] cursor-pointer transition-colors min-h-[44px]"
+            >
+              <CheckSquare className="w-4 h-4 text-[var(--color-text-muted)]" />
+              {t('message.multiSelect')}
             </button>
           )}
           {textContent && (

@@ -34,11 +34,16 @@ interface Props {
   onEntitySendMessage?: (entity: Entity) => void
   onEntityViewDetails?: (entity: Entity) => void
   onEntityShareCard?: (entity: Entity) => void
+  onForward?: (msg: Message) => void
+  onSelect?: (msg: Message) => void
+  selectionMode?: boolean
+  selectedMessageIds?: Set<number>
+  onToggleSelected?: (msg: Message) => void
   thinkingEntity?: Entity
   progress?: ProgressEntry
 }
 
-export function MessageList({ conversationId, messages, myEntityId, loading, refreshing = false, hasMore, lastReadMessageId, streams, participants, readReceipts, onLoadMore, onRefresh, onInteractionReply, onRevoke, onEditRecalled, onReply, onReact, onRetryOutbox, onCancelStream, onEntitySendMessage, onEntityViewDetails, onEntityShareCard, thinkingEntity, progress }: Props) {
+export function MessageList({ conversationId, messages, myEntityId, loading, refreshing = false, hasMore, lastReadMessageId, streams, participants, readReceipts, onLoadMore, onRefresh, onInteractionReply, onRevoke, onEditRecalled, onReply, onReact, onRetryOutbox, onCancelStream, onEntitySendMessage, onEntityViewDetails, onEntityShareCard, onForward, onSelect, selectionMode = false, selectedMessageIds, onToggleSelected, thinkingEntity, progress }: Props) {
   const { t } = useTranslation()
   const endRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -328,6 +333,11 @@ export function MessageList({ conversationId, messages, myEntityId, loading, ref
                 onEntityViewDetails={onEntityViewDetails}
                 onEntityShareCard={onEntityShareCard}
                 onScrollToMessage={handleScrollToMessage}
+                onForward={onForward}
+                onSelect={onSelect}
+                selectionMode={selectionMode}
+                selected={selectedMessageIds?.has(msg.id) ?? false}
+                onToggleSelected={onToggleSelected}
               />
             </div>
           )

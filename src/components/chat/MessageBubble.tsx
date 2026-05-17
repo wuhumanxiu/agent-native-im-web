@@ -418,11 +418,16 @@ interface Props {
   onEntityViewDetails?: (entity: import('@/lib/types').Entity) => void
   onEntityShareCard?: (entity: import('@/lib/types').Entity) => void
   onScrollToMessage?: (msgId: number) => void
+  onForward?: (msg: Message) => void
+  onSelect?: (msg: Message) => void
+  selectionMode?: boolean
+  selected?: boolean
+  onToggleSelected?: (msg: Message) => void
   showSender?: boolean
   isRead?: boolean
 }
 
-export function MessageBubble({ message, isSelf, myEntityId, replyMessage, interactionResponse, onInteractionReply, onRevoke, onEditRecalled, onReply, onReact, onRetryOutbox, onEntitySendMessage, onEntityViewDetails, onEntityShareCard, onScrollToMessage, showSender = true, isRead }: Props) {
+export function MessageBubble({ message, isSelf, myEntityId, replyMessage, interactionResponse, onInteractionReply, onRevoke, onEditRecalled, onReply, onReact, onRetryOutbox, onEntitySendMessage, onEntityViewDetails, onEntityShareCard, onScrollToMessage, onForward, onSelect, selectionMode = false, selected = false, onToggleSelected, showSender = true, isRead }: Props) {
   const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const authUrl = (url: string | undefined) => authenticatedFileUrl(url, token)
@@ -712,6 +717,7 @@ export function MessageBubble({ message, isSelf, myEntityId, replyMessage, inter
       ref={bubbleRef}
       className={cn(
         'flex gap-2 md:gap-2.5 group transition-opacity duration-300',
+        selectionMode && 'items-center',
         isSelf
           ? 'ml-auto flex-row-reverse w-full md:max-w-[85%]'
           : 'w-full md:max-w-[85%]',
@@ -719,6 +725,21 @@ export function MessageBubble({ message, isSelf, myEntityId, replyMessage, inter
       )}
       style={{ animation: 'slide-up 0.2s cubic-bezier(0.16,1,0.3,1)' }}
     >
+      {selectionMode && (
+        <button
+          type="button"
+          onClick={() => onToggleSelected?.(message)}
+          aria-label={selected ? t('message.unselectMessage') : t('message.selectMessage')}
+          className={cn(
+            'w-6 h-6 rounded-md border flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors',
+            selected
+              ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-white'
+              : 'border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-transparent hover:border-[var(--color-accent)]',
+          )}
+        >
+          <Check className="w-3.5 h-3.5" />
+        </button>
+      )}
       {/* Avatar (or spacer for alignment) */}
       {!isSelf && (
         showSender
@@ -1003,6 +1024,8 @@ export function MessageBubble({ message, isSelf, myEntityId, replyMessage, inter
         onReply={onReply}
         onReact={onReact}
         onRevoke={canRevoke ? onRevoke : undefined}
+        onForward={onForward}
+        onSelect={onSelect}
       />
     )}
   </>
