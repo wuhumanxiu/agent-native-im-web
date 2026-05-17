@@ -130,14 +130,11 @@ export function ConversationList({ conversations, activeId, myEntityId, scope = 
   return (
     <div className="flex flex-col h-full bg-[var(--color-bg-primary)]">
       {/* Header */}
-      <div className="px-4 pt-5 pb-3 flex items-center justify-between flex-shrink-0 border-b border-[var(--color-border)]">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)] mb-1">{t('conversation.messages')}</p>
-          <h2 className="text-[22px] leading-none font-semibold text-[var(--color-text-primary)]">{title || t('conversation.messages')}</h2>
-        </div>
+      <div className="px-4 pt-4 pb-2 flex items-center justify-between flex-shrink-0">
+        <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">{title || t('conversation.messages')}</h2>
         <button
           onClick={onNewChat}
-          className="w-10 h-10 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)] hover:bg-[var(--color-bg-hover)] flex items-center justify-center transition-colors cursor-pointer flex-shrink-0"
+          className="w-9 h-9 rounded-xl hover:bg-[var(--color-bg-hover)] flex items-center justify-center transition-colors cursor-pointer flex-shrink-0"
         >
           <Plus className="w-5 h-5 text-[var(--color-text-secondary)]" />
         </button>
