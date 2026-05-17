@@ -27,12 +27,12 @@ export function GroupAvatar({ participants = [], size = 'md', className }: Props
   const [failedUrls, setFailedUrls] = useState<Set<string>>(() => new Set())
   const members = useMemo(() => participants.slice(0, 9), [participants])
   const cols = gridColumns(members.length)
-  const gapPx = cols === 1 ? 0 : 2
+  const gapPx = cols === 1 ? 0 : 1
   const tileSize = `calc((100% - ${(cols - 1) * gapPx}px) / ${cols})`
 
   return (
     <div
-      className={`${sizeClass[size]} ${className || ''} flex-shrink-0 overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-[3px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]`}
+      className={`${sizeClass[size]} ${className || ''} flex-shrink-0 overflow-hidden rounded-full border border-[var(--color-border)] bg-transparent p-[2px]`}
       aria-hidden="true"
     >
       <div
