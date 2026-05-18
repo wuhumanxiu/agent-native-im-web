@@ -12,6 +12,7 @@ import { SettingsPage } from '@/pages/SettingsPage'
 import { PublicBotPage } from '@/pages/PublicBotPage'
 import { OnboardingPage } from '@/pages/OnboardingPage'
 import { DevelopersPage } from '@/pages/DevelopersPage'
+import { LandingGate } from '@/pages/LandingPage'
 import { OnePassCallbackPage } from '@/pages/OnePassCallbackPage'
 import * as api from '@/lib/api'
 import { getCachedUser } from '@/lib/cache'
@@ -103,6 +104,7 @@ export default function App() {
       <SessionRestore />
       <Routes>
         {/* Public routes */}
+        <Route path="/" element={<LandingGate />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<LoginPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
