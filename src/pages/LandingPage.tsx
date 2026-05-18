@@ -2,6 +2,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowRight,
+  BookOpen,
   Bot,
   CheckCircle2,
   Code2,
@@ -213,6 +214,7 @@ export function LandingPage() {
 
             <nav className="hidden items-center gap-6 text-sm font-medium text-white/66 lg:flex">
               <a href="#how">{t('landing.navHow')}</a>
+              <a href="/docs">{t('landing.navDocs')}</a>
               <Link to="/developers">{t('landing.navDevelopers')}</Link>
               <a href="https://github.com/wuhumanxiu/agent-native-im">{t('landing.navGithub')}</a>
             </nav>
@@ -249,6 +251,10 @@ export function LandingPage() {
                   {t('landing.secondaryCta')}
                   <PlugZap className="h-4 w-4" />
                 </Link>
+                <a href="/docs" className="inline-flex items-center justify-center gap-2 rounded-[11px] border border-white/14 bg-white/8 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/14">
+                  {t('landing.docsCta')}
+                  <BookOpen className="h-4 w-4" />
+                </a>
               </div>
             </div>
 
@@ -340,6 +346,10 @@ export function LandingPage() {
                 <span className="inline-flex items-center gap-3 text-sm font-semibold"><KeyRound className="h-5 w-5" /> {t('landing.developerGuide')}</span>
                 <ArrowRight className="h-4 w-4 text-white/45" />
               </Link>
+              <a href="/docs" className="flex items-center justify-between rounded-[14px] border border-white/10 bg-white/[0.055] p-4 transition hover:bg-white/10">
+                <span className="inline-flex items-center gap-3 text-sm font-semibold"><BookOpen className="h-5 w-5" /> {t('landing.docsSite')}</span>
+                <ArrowRight className="h-4 w-4 text-white/45" />
+              </a>
             </div>
           </div>
         </div>
@@ -366,10 +376,16 @@ export function LandingPage() {
             <p className="text-lg font-semibold">Agent-Native IM</p>
             <p className="mt-1 text-sm text-white/46">{t('landing.footerTagline')}</p>
           </div>
-          <Link to="/onboarding" className="inline-flex items-center justify-center gap-2 rounded-[11px] bg-white px-5 py-3 text-sm font-semibold text-[#111917] transition hover:bg-emerald-100">
-            {t('landing.primaryCta')}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <a href="/docs" className="inline-flex items-center justify-center gap-2 rounded-[11px] border border-white/14 bg-white/8 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/14">
+              {t('landing.docsCta')}
+              <BookOpen className="h-4 w-4" />
+            </a>
+            <Link to="/onboarding" className="inline-flex items-center justify-center gap-2 rounded-[11px] bg-white px-5 py-3 text-sm font-semibold text-[#111917] transition hover:bg-emerald-100">
+              {t('landing.primaryCta')}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </footer>
     </main>

@@ -13,6 +13,7 @@
   },
   "landing": {
     "navHow": "工作方式",
+    "navDocs": "文档",
     "navDevelopers": "开发者",
     "navGithub": "GitHub",
     "login": "登录",
@@ -21,6 +22,7 @@
     "heroBody": "ANI 是面向人类、Bot 和 agent runtime 的实时消息层。创建 Bot 身份，绑定 agent，提及正确的队友，共享文件，并把任务交接状态保留在同一条会话流里。",
     "primaryCta": "从引导开始",
     "secondaryCta": "接入 Agent",
+    "docsCta": "查看文档",
     "worksWith": "支持生态",
     "proofEyebrow": "产品界面",
     "proofTitle": "把 Agent 当作真实参与者的消息系统。",
@@ -47,6 +49,7 @@
     "openTitle": "掌握 Agent 协作依赖的通信层。",
     "openBody": "ANI 被设计为开放、可自托管的 agent-native 消息层。会话数据留在你的部署中，runtime 侧通过 SDK 和 adapter 扩展。",
     "developerGuide": "开发者指南",
+    "docsSite": "文档网站",
     "faqEyebrow": "FAQ",
     "faqTitle": "第一次对话前的常见问题。",
     "faqChatQ": "ANI 只是另一个聊天软件吗？",
