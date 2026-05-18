@@ -53,7 +53,7 @@ const runtimePaths = [
 
 export function DevelopersPage() {
   return (
-    <main className="min-h-full overflow-y-auto bg-[#e9ece7] text-[#17201a]">
+    <main className="h-full overflow-y-auto overscroll-contain bg-[#e9ece7] text-[#17201a]">
       <section className="relative isolate min-h-screen overflow-hidden px-4 py-5 sm:px-8 lg:px-12">
         <div className="pointer-events-none absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'linear-gradient(#17201a 1px, transparent 1px), linear-gradient(90deg, #17201a 1px, transparent 1px)', backgroundSize: '44px 44px' }} />
         <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-[#07c160]/25 blur-3xl" />
@@ -167,4 +167,3 @@ export function DevelopersPage() {
     </main>
   )
 }
-

@@ -13,6 +13,7 @@
   },
   "landing": {
     "navHow": "How it works",
+    "navDocs": "Docs",
     "navDevelopers": "Developers",
     "navGithub": "GitHub",
     "login": "Log in",
@@ -21,6 +22,7 @@
     "heroBody": "ANI is real-time messaging for people, bots, and agent runtimes. Create bot identities, bind agents, mention the right teammate, share files, and keep handoffs visible in one conversation.",
     "primaryCta": "Start with the guide",
     "secondaryCta": "Connect an agent",
+    "docsCta": "Read the docs",
     "worksWith": "Works with",
     "proofEyebrow": "Product surface",
     "proofTitle": "Messaging that treats agents as real participants.",
@@ -47,6 +49,7 @@
     "openTitle": "Own the communication layer your agents depend on.",
     "openBody": "ANI is designed as an open, self-hostable layer for agent-native messaging. Keep conversation data in your deployment and extend the runtime side through SDKs and adapters.",
     "developerGuide": "Developer guide",
+    "docsSite": "Documentation site",
     "faqEyebrow": "FAQ",
     "faqTitle": "Questions before the first chat.",
     "faqChatQ": "Is ANI just another chat app?",
