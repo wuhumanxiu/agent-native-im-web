@@ -17,11 +17,17 @@ import { getPushSubscription, isPushSupported, registerPushNotifications } from 
 import {
   User, Lock, Palette, Globe, ChevronLeft, ChevronRight, Bell,
   Check, Loader2, Eye, EyeOff, Smartphone, LogOut, Info, Copy, Download, ArrowLeft, RefreshCw,
-  Link2, Unlink, MessageSquarePlus, Megaphone,
+  Link2, Unlink, MessageSquarePlus, Megaphone, BookOpen, ExternalLink,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
 type Section = 'profile' | 'security' | 'devices' | 'theme' | 'language' | 'releases' | 'feedback' | 'about'
+type SettingsNavItem =
+  | { id: Section; icon: LucideIcon; label: string; kind: 'section' }
+  | { id: 'docs'; icon: LucideIcon; label: string; kind: 'external'; href: string }
+
+const DOCS_URL = 'https://agent-native.im/docs'
 
 interface Props {
   onBack: () => void
@@ -301,15 +307,16 @@ export function UserSettingsPage({ onBack }: Props) {
     await loadDevices()
   }
 
-  const navItems: { id: Section; icon: typeof User; label: string }[] = [
-    { id: 'profile', icon: User, label: t('settings.profile') },
-    { id: 'security', icon: Lock, label: t('settings.security') },
-    { id: 'devices', icon: Smartphone, label: t('settings.devices') },
-    { id: 'theme', icon: Palette, label: t('settings.theme') },
-    { id: 'language', icon: Globe, label: t('settings.language') },
-    { id: 'releases', icon: Megaphone, label: t('settings.releases') },
-    { id: 'feedback', icon: MessageSquarePlus, label: t('settings.feedback') },
-    { id: 'about', icon: Info, label: t('settings.about') },
+  const navItems: SettingsNavItem[] = [
+    { id: 'profile', icon: User, label: t('settings.profile'), kind: 'section' },
+    { id: 'security', icon: Lock, label: t('settings.security'), kind: 'section' },
+    { id: 'devices', icon: Smartphone, label: t('settings.devices'), kind: 'section' },
+    { id: 'theme', icon: Palette, label: t('settings.theme'), kind: 'section' },
+    { id: 'language', icon: Globe, label: t('settings.language'), kind: 'section' },
+    { id: 'releases', icon: Megaphone, label: t('settings.releases'), kind: 'section' },
+    { id: 'docs', icon: BookOpen, label: t('settings.documentation'), kind: 'external', href: DOCS_URL },
+    { id: 'feedback', icon: MessageSquarePlus, label: t('settings.feedback'), kind: 'section' },
+    { id: 'about', icon: Info, label: t('settings.about'), kind: 'section' },
   ]
 
   type ThemeItem = { id: Theme; label: string; bg: string; sidebar: string; bubble: string; bubbleSelf: string; text: string; gradient?: string }
@@ -334,6 +341,7 @@ export function UserSettingsPage({ onBack }: Props) {
   // Current theme label for the settings row
   const currentThemeLabel = theme === 'system' ? t('settings.themeSystem') : ([...lightThemes, ...darkThemes].find((th) => th.id === theme)?.label || theme)
   const currentLocaleLabel = locale === 'zh-CN' ? '中文' : 'English'
+  const openDocs = () => window.open(DOCS_URL, '_blank', 'noopener,noreferrer')
   const handleCopyProfileField = async (field: 'public', value: string) => {
     await navigator.clipboard.writeText(value)
     setCopiedProfileField(field)
@@ -882,7 +890,7 @@ export function UserSettingsPage({ onBack }: Props) {
               <ArrowLeft className="w-4 h-4 text-[var(--color-text-muted)]" />
             </button>
             <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">
-              {navItems.find((n) => n.id === section)?.label || ''}
+              {navItems.find((n) => n.kind === 'section' && n.id === section)?.label || ''}
             </h2>
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -1053,6 +1061,15 @@ export function UserSettingsPage({ onBack }: Props) {
             </button>
             <div className="h-px bg-[var(--color-border)] ml-11" />
             <button
+              onClick={openDocs}
+              className="w-full flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[var(--color-bg-hover)] transition-colors text-left"
+            >
+              <BookOpen className="w-4 h-4 text-[var(--color-accent)]" />
+              <span className="flex-1 text-sm text-[var(--color-text-primary)]">{t('settings.documentation')}</span>
+              <ExternalLink className="w-4 h-4 text-[var(--color-text-muted)]" />
+            </button>
+            <div className="h-px bg-[var(--color-border)] ml-11" />
+            <button
               onClick={() => setSection('feedback')}
               className="w-full flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[var(--color-bg-hover)] transition-colors text-left"
             >
@@ -1106,21 +1123,27 @@ export function UserSettingsPage({ onBack }: Props) {
         </div>
         <nav className="flex-1 py-2 flex flex-col">
           <div className="flex-1">
-            {navItems.map(({ id, icon: Icon, label }) => (
-              <button
-                key={id}
-                onClick={() => setSection(id)}
-                className={cn(
-                  'w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium cursor-pointer transition-colors',
-                  section === id
-                    ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-r-2 border-[var(--color-accent)]'
-                    : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]'
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </button>
-            ))}
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isExternal = item.kind === 'external'
+              const active = !isExternal && section === item.id
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => (isExternal ? openDocs() : setSection(item.id))}
+                  className={cn(
+                    'w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium cursor-pointer transition-colors',
+                    active
+                      ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-r-2 border-[var(--color-accent)]'
+                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]'
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {isExternal && <ExternalLink className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />}
+                </button>
+              )
+            })}
           </div>
           <div className="border-t border-[var(--color-border)] mt-2 pt-2">
             <button

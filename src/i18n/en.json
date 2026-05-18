@@ -386,6 +386,7 @@
     "pushDenied": "Permission denied by system",
     "pushUnsupported": "Push notifications are not available in this browser or app mode",
     "support": "Support",
+    "documentation": "Documentation",
     "releases": "Release Notes",
     "releasesTitle": "See what changed across ANI and connected agents",
     "releasesDesc": "Release notes summarize product improvements, fixed feedback, known issues, and any required plugin or adapter upgrades.",
@@ -710,6 +711,7 @@
     "reject": "Reject"
   },
   "common": {
+    "back": "Back",
     "copy": "Copy",
     "copyLink": "Copy link",
     "you": "(you)",
