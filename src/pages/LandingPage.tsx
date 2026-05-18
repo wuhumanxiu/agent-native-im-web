@@ -196,7 +196,7 @@ export function LandingPage() {
       <section
         className="relative isolate min-h-[100svh] overflow-hidden px-4 pb-10 pt-4 sm:px-8 lg:px-12"
         style={{
-          backgroundImage: 'linear-gradient(180deg, rgba(5,8,10,0.20) 0%, rgba(5,8,10,0.72) 48%, #090d0f 100%), url("/images/landing/multica-landing-bg.jpg")',
+          backgroundImage: 'linear-gradient(180deg, rgba(5,8,10,0.20) 0%, rgba(5,8,10,0.72) 48%, #090d0f 100%), url("/images/landing/ani-landing-bg.png")',
           backgroundPosition: 'center top',
           backgroundSize: 'cover',
         }}
