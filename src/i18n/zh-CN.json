@@ -386,6 +386,7 @@
     "pushDenied": "系统拒绝了通知权限",
     "pushUnsupported": "当前浏览器或应用模式不支持推送通知",
     "support": "支持",
+    "documentation": "帮助文档",
     "releases": "更新说明",
     "releasesTitle": "查看 ANI 与已接入 Agent 的更新内容",
     "releasesDesc": "更新说明会汇总产品改进、已修复反馈、已知问题，以及需要用户执行的插件或适配器升级操作。",
@@ -710,6 +711,7 @@
     "reject": "拒绝"
   },
   "common": {
+    "back": "返回",
     "copy": "复制",
     "copyLink": "复制链接",
     "you": "(你)",
